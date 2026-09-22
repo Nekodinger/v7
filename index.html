@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Physics Sandbox - AS/A Level Cambridge</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><circle cx=%2212%22 cy=%2212%22 r=%2210%22 fill=%22%230f172a%22/><circle cx=%2212%22 cy=%2212%22 r=%222.3%22 fill=%22%2338bdf8%22/><ellipse cx=%2212%22 cy=%2212%22 rx=%229%22 ry=%223.6%22 fill=%22none%22 stroke=%22%2338bdf8%22 stroke-width=%221.4%22/><ellipse cx=%2212%22 cy=%2212%22 rx=%229%22 ry=%223.6%22 fill=%22none%22 stroke=%22%2338bdf8%22 stroke-width=%221.4%22 transform=%22rotate(60 12 12)%22/><ellipse cx=%2212%22 cy=%2212%22 rx=%229%22 ry=%223.6%22 fill=%22none%22 stroke=%22%2338bdf8%22 stroke-width=%221.4%22 transform=%22rotate(120 12 12)%22/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+    svg: { fontCache: 'global' }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+</head>
+<body>
+
+<div id="onboarding-gate" class="onboarding-gate">
+  <div class="gate-card">
+    <div class="gate-brand">
+      <span class="brand-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.3" fill="currentColor"/><ellipse cx="12" cy="12" rx="9.5" ry="3.8" fill="none" stroke="currentColor" stroke-width="1.4"/><ellipse cx="12" cy="12" rx="9.5" ry="3.8" fill="none" stroke="currentColor" stroke-width="1.4" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="9.5" ry="3.8" fill="none" stroke="currentColor" stroke-width="1.4" transform="rotate(120 12 12)"/></svg>
+      </span>
+      <span class="brand-title">Physics Sandbox</span>
+    </div>
+
+    <!-- Langkah 1: API key Gemini (wajib untuk semua orang) -->
+    <div id="gate-step-apikey" class="gate-step">
+      <h2 data-i18n="gate.step1.title">Langkah 1: Siapkan API key Gemini gratismu</h2>
+      <p class="muted" data-i18n-html="gate.step1.desc">Situs ini memakai AI (Google Gemini) untuk Lab Simulasi Virtual dan Tutor Fisika. Masukkan API key Gemini <strong>milikmu sendiri</strong> dulu, gratis, tersimpan hanya di browser ini, dan tidak pernah dikirim ke siapa pun selain langsung ke Google.</p>
+
+      <ol class="onboarding-steps">
+        <li>
+          <div class="step-body">
+            <p data-i18n-html="gate.step1.li1"><strong>Buka Google AI Studio</strong> dan masuk dengan akun Google-mu.</p>
+            <a class="btn btn-secondary btn-small" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">
+              <span data-i18n="gate.step1.li1.link">Buka aistudio.google.com/apikey</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 5h5v5"/><path d="M19 5 10 14"/><path d="M12 5H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>
+            </a>
+          </div>
+        </li>
+        <li>
+          <div class="step-body">
+            <p data-i18n-html="gate.step1.li2">Klik <strong>Create API key</strong>, lalu salin key yang muncul (diawali huruf <code>AIza...</code>).</p>
+          </div>
+        </li>
+        <li>
+          <div class="step-body">
+            <p data-i18n="gate.step1.li3">Tempel API key itu di kolom ini, lalu simpan.</p>
+            <div class="key-input-row">
+              <input type="password" id="gate-key-input" data-i18n-placeholder="gate.key.placeholder" placeholder="Tempel API key Gemini di sini" autocomplete="off">
+              <button type="button" id="gate-key-toggle-visibility" class="btn btn-secondary btn-icon" data-i18n-title="gate.key.toggle" title="Tampilkan/sembunyikan">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+              <button type="button" id="gate-key-save-btn" class="btn btn-primary" data-i18n="gate.key.save">Simpan &amp; Lanjut</button>
+            </div>
+            <p class="onboarding-status" id="gate-key-status"></p>
+          </div>
+        </li>
+      </ol>
+
+      <p class="muted onboarding-footnote" data-i18n-html="gate.step1.footnote">Free tier Gemini punya batas kuota harian yang wajar untuk satu kelas, cek angka terbaru di <a href="https://ai.google.dev/gemini-api/docs/rate-limits" target="_blank" rel="noopener">ai.google.dev/gemini-api/docs/rate-limits</a>. Jangan masukkan data pribadi ke dalam prompt simulasi.</p>
+    </div>
+
+    <!-- Langkah 2: peran pengguna -->
+    <div id="gate-step-role" class="gate-step" hidden>
+      <h2 data-i18n="gate.step2.title">Langkah 2: Kamu siapa?</h2>
+      <p class="muted" data-i18n="gate.step2.desc">Pilih salah satu supaya situs menuntunmu lewat alur yang tepat.</p>
+      <div class="gate-role-options">
+        <button type="button" id="gate-role-student-btn" class="gate-role-btn">
+          <strong data-i18n="gate.role.student.title">Saya siswa</strong>
+          <span class="muted small" data-i18n="gate.role.student.desc">Isi nama &amp; kelas, lalu masukkan kode dari guru untuk belajar bersama sesuai sesi kelas.</span>
+        </button>
+        <button type="button" id="gate-role-guest-btn" class="gate-role-btn">
+          <strong data-i18n="gate.role.guest.title">Bukan siswa (guru/pengelola/lainnya)</strong>
+          <span class="muted small" data-i18n="gate.role.guest.desc">Masukkan Kode Eksplorasi Bebas untuk langsung membuka semua topik.</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Langkah 3 (siswa): nama & kelas -->
+    <div id="gate-step-student-info" class="gate-step" hidden>
+      <h2 data-i18n="gate.step3s.title">Langkah 3: Data diri singkat</h2>
+      <p class="muted" data-i18n="gate.step3s.desc">Supaya gurumu bisa mengenali progresmu di Panel Guru.</p>
+      <label data-i18n="field.fullname">Nama lengkap
+        <input type="text" id="gate-student-name-input" data-i18n-placeholder="field.fullname.placeholder" placeholder="Nama kamu" autocomplete="off">
+      </label>
+      <label data-i18n="field.class">Kelas
+        <input type="text" id="gate-student-class-input" data-i18n-placeholder="field.class.placeholder" placeholder="misal: XI IPA 2" autocomplete="off">
+      </label>
+      <button type="button" id="gate-student-info-btn" class="btn btn-primary" data-i18n="action.continue">Lanjut</button>
+      <p class="onboarding-status" id="gate-student-info-status"></p>
+      <p class="gate-back-row"><button type="button" id="gate-student-info-back-btn" class="link-btn" data-i18n="action.back">Kembali</button></p>
+    </div>
+
+    <!-- Langkah 4 (siswa): kode dari guru -->
+    <div id="gate-step-student-code" class="gate-step" hidden>
+      <h2 data-i18n="gate.step4s.title">Langkah 4: Masukkan kode dari guru</h2>
+      <p class="muted" data-i18n="gate.step4s.desc">Tanyakan ke gurumu kode sesi kelas yang sedang berjalan sekarang.</p>
+      <div class="key-input-row">
+        <input type="text" id="gate-student-code-input" data-i18n-placeholder="gate.student.code.placeholder" placeholder="Kode dari guru" autocomplete="off">
+        <button type="button" id="gate-student-code-btn" class="btn btn-primary" data-i18n="action.join">Gabung</button>
+      </div>
+      <p class="onboarding-status" id="gate-student-code-status"></p>
+      <p class="gate-back-row"><button type="button" id="gate-student-code-back-btn" class="link-btn" data-i18n="gate.student.code.back">Ubah nama/kelas</button></p>
+    </div>
+
+    <!-- Langkah 3 (bukan siswa): kode eksplorasi -->
+    <div id="gate-step-guest-code" class="gate-step" hidden>
+      <h2 data-i18n="gate.step3g.title">Langkah 3: Kode Eksplorasi Bebas</h2>
+      <p class="muted" data-i18n="gate.step3g.desc">Masukkan kode dari guru/pengelola situs untuk membuka akses penuh ke semua topik.</p>
+      <div class="key-input-row">
+        <input type="text" id="gate-guest-code-input" data-i18n-placeholder="gate.guest.code.placeholder" placeholder="Kode eksplorasi" autocomplete="off">
+        <button type="button" id="gate-guest-code-btn" class="btn btn-primary" data-i18n="action.unlockaccess">Buka Akses</button>
+      </div>
+      <p class="onboarding-status" id="gate-guest-code-status"></p>
+      <p class="gate-back-row"><button type="button" id="gate-guest-code-back-btn" class="link-btn" data-i18n="action.back">Kembali</button></p>
+    </div>
+  </div>
+</div>
+
+<div id="site-shell" hidden>
+<header class="site-header">
+  <div class="header-inner">
+    <button type="button" id="brand-home" class="brand" data-i18n-title="header.home.title" title="Kembali ke Beranda">
+      <span class="brand-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.3" fill="currentColor"/><ellipse cx="12" cy="12" rx="9.5" ry="3.8" fill="none" stroke="currentColor" stroke-width="1.4"/><ellipse cx="12" cy="12" rx="9.5" ry="3.8" fill="none" stroke="currentColor" stroke-width="1.4" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="9.5" ry="3.8" fill="none" stroke="currentColor" stroke-width="1.4" transform="rotate(120 12 12)"/></svg>
+      </span>
+      <span class="brand-text">
+        <span class="brand-title">Physics Sandbox</span>
+        <span class="brand-sub" data-i18n="header.brandsub">Belajar &amp; Lab Simulasi Fisika · AS &amp; A Level Cambridge 9702</span>
+      </span>
+    </button>
+
+    <div class="header-actions">
+      <div class="lang-switch" id="lang-switch" role="group" data-i18n-title="header.lang.title" title="Ganti bahasa">
+        <button type="button" class="lang-switch-btn" data-lang="id">ID</button>
+        <button type="button" class="lang-switch-btn" data-lang="en">EN</button>
+      </div>
+      <button type="button" id="key-status-pill" class="key-status-pill" data-i18n-title="header.keystatus.title" title="Status API key Gemini">
+        <span class="key-status-dot" id="key-status-dot"></span>
+        <span id="key-status-text">API key belum diatur</span>
+      </button>
+      <button id="settings-btn" class="settings-btn" data-i18n-title="header.settings" title="Pengaturan">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h9M17 7h3"/><circle cx="14" cy="7" r="2"/><path d="M4 12h3M11 12h9"/><circle cx="8" cy="12" r="2"/><path d="M4 17h9M17 17h3"/><circle cx="14" cy="17" r="2"/></svg>
+        <span data-i18n="header.settings">Pengaturan</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div id="class-session-banner" class="class-session-banner" hidden>
+  <span id="class-session-text"></span>
+  <button type="button" id="class-session-go-btn" class="btn btn-primary btn-small" data-i18n="classsession.gobtn">Ke sana sekarang</button>
+</div>
+
+<div class="layout">
+  <button type="button" id="nav-toggle" class="nav-toggle" data-i18n-title="nav.toggle.title" title="Pin/lepas menu topik" data-i18n-aria="nav.toggle.aria" aria-label="Pin menu topik">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+  </button>
+  <nav id="topic-nav" class="topic-nav" data-i18n-aria="nav.aria" aria-label="Daftar topik">
+    <!-- diisi oleh app.js dari data TOPICS -->
+  </nav>
+
+  <main id="content-area" class="content-area">
+    <div id="welcome-panel" class="welcome-panel">
+      <div class="welcome-intro">
+        <h2 data-i18n="welcome.title">Selamat datang di Physics Sandbox</h2>
+        <p data-i18n-html="welcome.intro">Pilih topik di sebelah kiri untuk mulai belajar. Setiap topik punya empat bagian: <strong>Materi Belajar</strong>, <strong>Eksperimen</strong>, <strong>Latihan Soal</strong>, dan <strong>Lab Simulasi Virtual</strong> tempat kamu bisa membuat simulasi fisikamu sendiri dengan bantuan AI.</p>
+        <p class="muted" data-i18n-html="welcome.legend">Topik yang sudah lengkap ditandai <span class="badge badge-ready">Siap</span>, topik lain masih <span class="badge badge-soon">Segera</span> - struktur sudah disiapkan, tinggal diisi kontennya.</p>
+      </div>
+    </div>
+
+    <div id="topic-view" class="topic-view" hidden>
+      <div class="topic-header">
+        <span id="topic-badge" class="badge"></span>
+        <h2 id="topic-title"></h2>
+        <p id="topic-desc"></p>
+      </div>
+
+      <div class="tabs" role="tablist">
+        <button class="tab-btn active" data-tab="materi" role="tab">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5.6C4 4.7 4.7 4 5.6 4H12v16H5.6A1.6 1.6 0 0 1 4 18.4V5.6Z"/><path d="M20 5.6c0-.9-.7-1.6-1.6-1.6H12v16h6.4c.9 0 1.6-.7 1.6-1.6V5.6Z"/></svg>
+          <span data-i18n="tab.materi">Materi Belajar</span>
+        </button>
+        <button class="tab-btn" data-tab="eksperimen" role="tab">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9.5 3h5"/><path d="M10.2 3v6.7L5 18.2A1.9 1.9 0 0 0 6.6 21h10.8a1.9 1.9 0 0 0 1.6-2.8L13.8 9.7V3"/><path d="M7.7 15.2h8.6"/></svg>
+          <span data-i18n="tab.eksperimen">Eksperimen</span>
+        </button>
+        <button class="tab-btn" data-tab="latihan" role="tab">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4.5 6.5h9M4.5 12h6M4.5 17.5h4"/><path d="m14.3 16.4 5.4-5.4-2.4-2.4-5.4 5.4-.7 3.1 3.1-.7Z"/></svg>
+          <span data-i18n="tab.latihan">Latihan Soal</span>
+        </button>
+        <button class="tab-btn" data-tab="lab" role="tab">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3.2" y="4.8" width="17.6" height="11.6" rx="1.6"/><path d="M8.3 20h7.4M12 16.4V20"/><path d="M10.3 8.3v4.4l3.8-2.2-3.8-2.2Z" fill="currentColor" stroke="none"/></svg>
+          <span data-i18n="tab.lab">Lab Simulasi Virtual</span>
+        </button>
+      </div>
+
+      <div class="topic-progress" id="topic-progress" hidden>
+        <div class="progress-steps" id="progress-steps"></div>
+        <button type="button" id="progress-next-btn" class="btn btn-primary btn-small" hidden>
+          <span data-i18n="progress.continueto">Lanjut ke</span> <span id="progress-next-label"></span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>
+        </button>
+        <button type="button" id="progress-finish-btn" class="btn btn-primary btn-small" hidden>
+          <span data-i18n="progress.finish">Topik selesai - Lanjut ke Topik Berikutnya</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>
+        </button>
+      </div>
+
+      <div class="tab-panels">
+        <section id="panel-materi" class="tab-panel active"></section>
+        <section id="panel-eksperimen" class="tab-panel"></section>
+        <section id="panel-latihan" class="tab-panel"></section>
+
+        <section id="panel-lab" class="tab-panel">
+          <p class="pjbl-stage-label" data-i18n="pjbl.stage.lab"></p>
+          <p id="lab-key-banner" class="key-banner" hidden>
+            <span data-i18n="lab.keybanner.text">Kamu belum memasukkan API key Gemini pribadi, jadi Generate belum bisa jalan.</span>
+            <button type="button" id="lab-key-banner-btn" class="btn btn-primary btn-small" data-i18n="lab.keybanner.btn">Atur API Key</button>
+          </p>
+          <div class="lab-grid">
+
+            <div class="lab-card">
+              <h3><span class="step-num">1</span> <span data-i18n="lab.card1.title">Generator Prompt Terstruktur</span></h3>
+              <p class="muted" data-i18n="lab.card1.desc">Isi kolom-kolom ini supaya prompt yang dikirim ke AI jelas dan terarah, tidak perlu jago menulis prompt dari nol.</p>
+
+              <form id="prompt-form" class="prompt-form">
+                <label data-i18n="lab.field.concept">Konsep fisika spesifik
+                  <select id="pf-concept"></select>
+                </label>
+
+                <label data-i18n="lab.field.vistype">Jenis visualisasi
+                  <select id="pf-vistype">
+                    <option value="Animasi objek bergerak (kinematika visual, benda bergerak nyata di layar)" data-i18n="lab.vistype.moving">Animasi objek bergerak</option>
+                    <option value="Grafik interaktif yang berubah real-time (misalnya grafik x-t, v-t, a-t, atau grafik lain yang relevan)" data-i18n="lab.vistype.graph">Grafik interaktif real-time</option>
+                    <option value="Alat peraga virtual (virtual apparatus) yang meniru alat eksperimen di lab" data-i18n="lab.vistype.apparatus">Alat peraga virtual</option>
+                    <option value="Diagram vektor interaktif (misalnya vektor gaya, kecepatan, atau medan)" data-i18n="lab.vistype.vector">Diagram vektor interaktif</option>
+                  </select>
+                </label>
+
+                <label data-i18n="lab.field.variables">Variabel yang bisa diubah siswa (pisahkan dengan koma)
+                  <input type="text" id="pf-variables" data-i18n-placeholder="lab.field.variables.placeholder" placeholder="misal: kecepatan awal, sudut, massa">
+                </label>
+
+                <label data-i18n="lab.field.goal">Tujuan pembelajaran
+                  <textarea id="pf-goal" rows="2" data-i18n-placeholder="lab.field.goal.placeholder" placeholder="misal: siswa dapat mengamati hubungan antara sudut elevasi dan jarak jangkauan pada gerak parabola"></textarea>
+                </label>
+
+                <label data-i18n="lab.field.level">Tingkat kompleksitas tampilan
+                  <select id="pf-level">
+                    <option value="sederhana (fokus pada satu konsep inti, kontrol minimal)" data-i18n="lab.level.simple">Sederhana</option>
+                    <option value="menengah (beberapa kontrol dan tampilan angka/grafik)" selected data-i18n="lab.level.medium">Menengah</option>
+                    <option value="kompleks (banyak kontrol, beberapa grafik/tampilan sekaligus)" data-i18n="lab.level.complex">Kompleks</option>
+                  </select>
+                </label>
+
+                <label data-i18n="lab.field.extra">Instruksi tambahan (opsional)
+                  <textarea id="pf-extra" rows="2" data-i18n-placeholder="lab.field.extra.placeholder" placeholder="misal: gunakan tema warna gelap, tampilkan rumus yang dipakai di layar"></textarea>
+                </label>
+
+                <button type="button" id="pf-build-btn" class="btn btn-secondary" data-i18n="lab.build.btn">Susun Prompt</button>
+              </form>
+            </div>
+
+            <div class="lab-card">
+              <h3><span class="step-num">2</span> <span data-i18n="lab.card2.title">Prompt Final (bisa kamu edit)</span></h3>
+              <textarea id="final-prompt" rows="8" data-i18n-placeholder="lab.finalprompt.placeholder" placeholder="Prompt hasil susunan akan muncul di sini. Kamu boleh mengedit langsung sebelum generate."></textarea>
+              <div class="lab-actions">
+                <button type="button" id="generate-btn" class="btn btn-primary">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8L12 2Z"/></svg>
+                  <span data-i18n="lab.generate.btn">Generate Simulasi</span>
+                </button>
+                <button type="button" id="demo-btn" class="btn btn-secondary" data-i18n="lab.demo.btn">Coba Mode Demo (tanpa API key)</button>
+                <span id="generate-status" class="muted"></span>
+              </div>
+              <p id="mode-banner" class="mode-banner" hidden></p>
+            </div>
+
+            <div class="lab-card lab-preview-card">
+              <h3><span class="step-num">3</span> <span data-i18n="lab.card3.title">Preview Simulasi</span></h3>
+              <div class="preview-toolbar">
+                <button type="button" id="rerun-btn" class="btn btn-secondary" disabled>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9a8 8 0 0 1 14-3.5M20 4v5h-5"/><path d="M20 15a8 8 0 0 1-14 3.5M4 20v-5h5"/></svg>
+                  <span data-i18n="lab.rerun.btn">Jalankan Ulang</span>
+                </button>
+                <button type="button" id="toggle-code-btn" class="btn btn-secondary" disabled>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m8 8-4 4 4 4M16 8l4 4-4 4"/></svg>
+                  <span id="toggle-code-label" data-i18n="lab.togglecode.view">Lihat Kode</span>
+                </button>
+                <button type="button" id="download-btn" class="btn btn-secondary" disabled>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0 4-4m-4 4-4-4"/><path d="M5 19h14"/></svg>
+                  <span data-i18n="lab.download.btn">Unduh .html</span>
+                </button>
+              </div>
+              <iframe id="preview-frame" class="preview-frame" sandbox="allow-scripts" data-i18n-title="lab.preview.title" title="Preview simulasi"></iframe>
+              <textarea id="code-editor" class="code-editor" hidden spellcheck="false"></textarea>
+
+              <div class="lab-edit-followup" id="lab-edit-followup" hidden>
+                <label>
+                  <span class="edit-followup-title" data-i18n="lab.editfollowup.title">Prompt Lanjutan (edit simulasi yang sudah jadi ini)</span>
+                  <textarea id="edit-followup-input" rows="2" data-i18n-placeholder="lab.editfollowup.placeholder" placeholder="misal: tambahkan tampilan nilai kecepatan secara real-time, atau ubah warna latar jadi gelap"></textarea>
+                </label>
+                <div class="lab-actions">
+                  <button type="button" id="edit-followup-btn" class="btn btn-secondary btn-small">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                    <span data-i18n="lab.editfollowup.btn">Edit Simulasi Ini</span>
+                  </button>
+                  <span id="edit-followup-counter" class="muted small"></span>
+                </div>
+                <p id="edit-followup-status" class="muted small"></p>
+              </div>
+            </div>
+
+          </div>
+
+          <div id="lab-gate-banner" class="gate-banner" hidden></div>
+          <div class="lab-card" id="lab-reflection-section">
+            <h3><span class="step-num">4</span> <span data-i18n="lab.reflection.title">Refleksi &amp; Validasi Simulasi (untuk konfirmasi guru)</span></h3>
+            <p class="muted small" data-i18n="lab.reflection.desc">Sebelum topik ini ditandai selesai, jelaskan singkat apakah simulasi yang kamu hasilkan sudah sesuai hukum/konsep fisika topik ini dan bagaimana kamu mengeceknya (misalnya coba nilai ekstrem/nol pada variabelnya).</p>
+            <textarea id="lab-reflection-input" rows="3" data-i18n-placeholder="lab.reflection.placeholder" placeholder="misal: saya coba set arus = 0, gaya pada simulasi juga otomatis jadi 0, sesuai rumus F = BIL..."></textarea>
+            <div class="teacher-actions" style="margin-top:10px;">
+              <button type="button" id="lab-reflection-submit-btn" class="btn btn-primary btn-small" data-i18n="lab.reflection.submitbtn">Kirim untuk Konfirmasi Guru</button>
+            </div>
+            <p class="teacher-note" id="lab-reflection-status"></p>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+
+<button type="button" id="chatbot-toggle-btn" class="chatbot-toggle-btn" data-i18n-title="chatbot.toggle.title" title="Tanya Tutor Fisika">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"/></svg>
+  <span data-i18n="chatbot.toggle.label">Tutor Fisika</span>
+</button>
+
+<div id="chatbot-panel" class="chatbot-panel" hidden>
+  <div class="chatbot-head">
+    <div>
+      <h3 data-i18n="chatbot.head.title">Tutor Fisika</h3>
+      <p class="muted small" id="chatbot-topic-label" data-i18n="chatbot.topiclabel.default">Pilih topik dulu supaya tutor tahu konteksnya.</p>
+    </div>
+    <button type="button" id="chatbot-close-btn" class="icon-btn" data-i18n-aria="chatbot.close.aria" aria-label="Tutup">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+  <p class="muted small chatbot-disclaimer" data-i18n="chatbot.disclaimer">Ceritakan pemahamanmu, tutor akan lebih sering balik bertanya dan menanggapi jawabanmu daripada langsung memberi jawaban jadi, supaya kamu yang berpikir duluan.</p>
+  <div id="chatbot-messages" class="chatbot-messages"></div>
+  <form id="chatbot-form" class="chatbot-form">
+    <input type="text" id="chatbot-input" data-i18n-placeholder="chatbot.input.placeholder" placeholder="Tulis pertanyaan atau istilah fisika..." autocomplete="off">
+    <button type="submit" class="btn btn-primary btn-small" data-i18n="chatbot.send">Kirim</button>
+  </form>
+</div>
+
+<button type="button" id="quiz-toggle-btn" class="quiz-toggle-btn" hidden data-i18n-title="quiz.toggle.title" title="Kuis dari guru">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+  <span id="quiz-toggle-label" data-i18n="quiz.toggle.label">Kuis</span>
+</button>
+
+<div id="quiz-modal" class="modal" hidden>
+  <div class="modal-box quiz-modal-box">
+    <div class="modal-head">
+      <h3 data-i18n="quiz.modal.title">Kuis dari Guru</h3>
+      <button type="button" id="quiz-modal-close-x" class="icon-btn" data-i18n-aria="chatbot.close.aria" aria-label="Tutup">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <div id="quiz-modal-body"></div>
+    <div class="modal-actions">
+      <button type="button" id="quiz-modal-submit-btn" class="btn btn-primary" data-i18n="quiz.modal.submit.btn">Kirim Jawaban</button>
+      <button type="button" id="quiz-modal-close-btn" class="btn btn-secondary" data-i18n="quiz.modal.close.btn">Tutup</button>
+    </div>
+    <p class="quiz-submitted-note" id="quiz-modal-status"></p>
+  </div>
+</div>
+
+</div><!-- /site-shell -->
+
+<div id="settings-modal" class="modal" hidden>
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 data-i18n="settings.title">Pengaturan</h3>
+      <button type="button" id="settings-close-x" class="icon-btn" data-i18n-aria="chatbot.close.aria" aria-label="Tutup">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+
+    <label data-i18n="settings.apikeylabel">API key Gemini pribadimu
+      <input type="password" id="settings-key-input" placeholder="AIza...">
+    </label>
+    <p class="muted small" data-i18n-html="settings.apikeynote">Tersimpan di browser ini saja, dikirim langsung ke Google setiap kali kamu menekan Generate. Belum punya key? <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Buat gratis di Google AI Studio</a>.</p>
+
+    <details class="advanced-settings">
+      <summary data-i18n="settings.unlock.summary">Kode Eksplorasi Bebas (dari guru)</summary>
+      <p class="muted small" data-i18n="settings.unlock.desc">Kamu boleh mulai dari topik mana saja, tapi di dalam tiap topik, tab (Materi -> Eksperimen -> Latihan Soal -> Lab Simulasi) tetap dibuka bertahap mengikuti urutan belajar. Punya kode khusus dari guru untuk menjelajah bebas tanpa urutan (mis. eksplorasi mandiri di rumah)? Masukkan di sini.</p>
+      <p class="muted small" id="unlock-status-text"></p>
+      <div class="key-input-row">
+        <input type="text" id="unlock-code-input" data-i18n-placeholder="settings.unlock.placeholder" placeholder="Masukkan kode dari guru" autocomplete="off">
+        <button type="button" id="unlock-code-btn" class="btn btn-primary btn-small" data-i18n="settings.unlock.btn">Buka Kunci</button>
+      </div>
+    </details>
+
+    <details class="advanced-settings">
+      <summary data-i18n="settings.classsession.summary">Sesi Kelas (dari guru)</summary>
+      <p class="muted small" data-i18n="settings.classsession.desc">Kalau gurumu sedang menjalankan sesi kelas langsung, semua siswa yang gabung akan mengerjakan aktivitas yang sama secara bersamaan. Masukkan kode yang dibagikan guru untuk gabung.</p>
+      <p class="muted small" id="class-session-status-text"></p>
+      <div class="key-input-row" id="class-session-join-row">
+        <input type="text" id="class-session-code-input" data-i18n-placeholder="settings.classsession.placeholder" placeholder="Kode sesi dari guru" autocomplete="off">
+        <button type="button" id="class-session-join-btn" class="btn btn-primary btn-small" data-i18n="action.join">Gabung</button>
+      </div>
+      <button type="button" id="class-session-leave-btn" class="btn btn-secondary btn-small" hidden data-i18n="settings.classsession.leave">Keluar dari Sesi</button>
+    </details>
+
+    <details class="advanced-settings" id="settings-student-info-details" hidden>
+      <summary data-i18n="settings.studentinfo.summary">Data Diri (Siswa)</summary>
+      <label data-i18n="field.fullname">Nama lengkap
+        <input type="text" id="settings-student-name-input" data-i18n-placeholder="field.fullname.placeholder" placeholder="Nama kamu">
+      </label>
+      <label data-i18n="field.class">Kelas
+        <input type="text" id="settings-student-class-input" data-i18n-placeholder="field.class.placeholder" placeholder="misal: XI IPA 2">
+      </label>
+      <button type="button" id="settings-student-info-save-btn" class="btn btn-secondary btn-small" data-i18n="settings.studentinfo.savebtn">Simpan Data Diri</button>
+    </details>
+
+    <p class="muted small"><button type="button" id="settings-reset-onboarding-btn" class="link-btn" data-i18n="settings.resetonboarding">Ulangi proses awal (ganti peran siswa/bukan siswa)</button></p>
+
+    <div class="modal-actions">
+      <button type="button" id="settings-save-btn" class="btn btn-primary" data-i18n="settings.save">Simpan</button>
+      <button type="button" id="settings-close-btn" class="btn btn-secondary" data-i18n="settings.close">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/demo-simulations.js"></script>
+<script src="js/content.js"></script>
+<script src="js/chatbot-data.js"></script>
+<script src="js/chatbot.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel Guru - Physics Sandbox</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><circle cx=%2212%22 cy=%2212%22 r=%2210%22 fill=%22%230f172a%22/><circle cx=%2212%22 cy=%2212%22 r=%222.3%22 fill=%22%2338bdf8%22/><ellipse cx=%2212%22 cy=%2212%22 rx=%229%22 ry=%223.6%22 fill=%22none%22 stroke=%22%2338bdf8%22 stroke-width=%221.4%22/></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+    svg: { fontCache: 'global' }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+<style>
+  .teacher-wrap { max-width: 880px; margin: 0 auto; padding: 28px 20px 60px; }
+  .teacher-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px; margin-bottom: 20px; }
+  .teacher-card h2 { margin: 0 0 4px; font-size: 1.1rem; }
+  .teacher-card .muted { margin: 0 0 16px; }
+  .code-display { font-family: monospace; font-size: 2.2rem; letter-spacing: 0.12em; font-weight: 700; color: var(--accent); background: var(--panel-light); border: 1px dashed var(--border); border-radius: var(--radius-md); padding: 14px 20px; text-align: center; margin: 10px 0 16px; }
+  .field-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .field-row > div { flex: 1; min-width: 200px; }
+  .field-row label { display: block; font-size: 0.82rem; color: var(--muted); margin-bottom: 5px; }
+  .field-row select, .field-row input { width: 100%; background: var(--panel-light); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); padding: 9px 12px; font-size: 0.88rem; }
+  .teacher-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  table.roster-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  table.roster-table th, table.roster-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  table.roster-table th { color: var(--muted); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .status-dot.online { background: var(--good); }
+  .status-dot.away { background: var(--warn); }
+  .status-dot.stale { background: var(--muted); }
+  .teacher-note { font-size: 0.8rem; color: var(--muted); margin-top: 6px; }
+  #teacher-login-card { max-width: 420px; margin: 60px auto; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <a href="index.html" class="brand" style="text-decoration:none;">
+      <span class="brand-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.3" fill="currentColor"/><ellipse cx="12" cy="12" rx="9.5" ry="3.8" fill="none" stroke="currentColor" stroke-width="1.4"/><ellipse cx="12" cy="12" rx="9.5" ry="3.8" fill="none" stroke="currentColor" stroke-width="1.4" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="9.5" ry="3.8" fill="none" stroke="currentColor" stroke-width="1.4" transform="rotate(120 12 12)"/></svg>
+      </span>
+      <span class="brand-text">
+        <span class="brand-title">Physics Sandbox</span>
+        <span class="brand-sub">Panel Guru - Sesi Kelas &amp; Monitoring</span>
+      </span>
+    </a>
+    <div class="header-actions">
+      <div class="lang-switch" id="lang-switch" role="group" data-i18n-title="header.lang.title" title="Ganti bahasa">
+        <button type="button" class="lang-switch-btn" data-lang="id">ID</button>
+        <button type="button" class="lang-switch-btn" data-lang="en">EN</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="teacher-wrap">
+
+  <div class="teacher-card" id="teacher-login-card">
+    <h2 data-i18n="teacher.login.title">Masuk Panel Guru</h2>
+    <p class="muted small" data-i18n-html="teacher.login.desc">Masukkan Kode Kontrol Guru (diatur di <code>apps-script/Code.gs</code>, <code>TEACHER_CONTROL_CODE</code>).</p>
+    <div class="field-row">
+      <div>
+        <label data-i18n="teacher.backendurl.label">URL Backend (Apps Script Web App)</label>
+        <input type="text" id="teacher-backend-input" placeholder="https://script.google.com/macros/s/XXXX/exec">
+      </div>
+    </div>
+    <div class="field-row">
+      <div>
+        <label data-i18n="teacher.controlcode.label">Kode Kontrol Guru</label>
+        <input type="password" id="teacher-control-input" data-i18n-placeholder="teacher.controlcode.placeholder" placeholder="Kode kontrol guru">
+      </div>
+    </div>
+    <div class="teacher-actions">
+      <button type="button" id="teacher-login-btn" class="btn btn-primary" data-i18n="teacher.login.btn">Masuk</button>
+    </div>
+    <p class="teacher-note" id="teacher-login-status"></p>
+  </div>
+
+  <div id="teacher-panel" hidden>
+    <div class="teacher-card">
+      <h2 data-i18n="teacher.session.title">Sesi Kelas</h2>
+      <p class="muted small" data-i18n="teacher.session.desc">Tentukan satu aktivitas yang wajib dikerjakan bareng semua siswa yang gabung. Siswa gabung lewat tombol Pengaturan di situs utama, masukkan kode di bawah.</p>
+
+      <div id="teacher-no-session">
+        <div class="field-row">
+          <div>
+            <label data-i18n="teacher.topic.label">Topik</label>
+            <select id="teacher-topic-select"></select>
+          </div>
+          <div>
+            <label data-i18n="teacher.tab.label">Tab</label>
+            <select id="teacher-tab-select">
+              <option value="0" data-i18n="tab.materi">Materi Belajar</option>
+              <option value="1" data-i18n="tab.eksperimen">Eksperimen</option>
+              <option value="2" data-i18n="tab.latihan">Latihan Soal</option>
+              <option value="3" data-i18n="tab.lab">Lab Simulasi Virtual</option>
+            </select>
+          </div>
+        </div>
+        <div class="teacher-actions">
+          <button type="button" id="teacher-start-btn" class="btn btn-primary" data-i18n="teacher.startsession.btn">Mulai Sesi Baru</button>
+        </div>
+      </div>
+
+      <div id="teacher-has-session" hidden>
+        <p class="muted small" data-i18n="teacher.sharecode.desc">Kode untuk dibagikan ke siswa (tulis di papan tulis / sebutkan):</p>
+        <div class="code-display" id="teacher-code-display">------</div>
+        <div class="field-row">
+          <div>
+            <label data-i18n="teacher.activetopic.label">Topik aktif sekarang</label>
+            <select id="teacher-topic-select-2"></select>
+          </div>
+          <div>
+            <label data-i18n="teacher.activetab.label">Tab aktif sekarang</label>
+            <select id="teacher-tab-select-2">
+              <option value="0" data-i18n="tab.materi">Materi Belajar</option>
+              <option value="1" data-i18n="tab.eksperimen">Eksperimen</option>
+              <option value="2" data-i18n="tab.latihan">Latihan Soal</option>
+              <option value="3" data-i18n="tab.lab">Lab Simulasi Virtual</option>
+            </select>
+          </div>
+        </div>
+        <div class="teacher-actions">
+          <button type="button" id="teacher-update-btn" class="btn btn-primary" data-i18n="teacher.applychanges.btn">Terapkan Perubahan</button>
+          <button type="button" id="teacher-end-btn" class="btn btn-secondary" data-i18n="teacher.endsession.btn">Akhiri Sesi</button>
+        </div>
+      </div>
+      <p class="teacher-note" id="teacher-session-status"></p>
+    </div>
+
+    <div class="teacher-card">
+      <h2 data-i18n="teacher.gate.title">Konfirmasi Menunggu</h2>
+      <p class="muted small" data-i18n="teacher.gate.desc">Siswa yang sudah menjawab benar pertanyaan konfirmasi Eksperimen, atau mengirim refleksi Lab Simulasi, muncul di sini menunggu keputusanmu. Diperbarui otomatis bersamaan dengan Progres Siswa (~8 detik).</p>
+      <div style="overflow-x:auto;">
+        <table class="roster-table">
+          <thead>
+            <tr>
+              <th data-i18n="teacher.gate.th.student">Siswa</th>
+              <th data-i18n="teacher.gate.th.topic">Topik</th>
+              <th data-i18n="teacher.gate.th.stage">Tahap</th>
+              <th data-i18n="teacher.gate.th.summary">Ringkasan/Refleksi Siswa</th>
+              <th data-i18n="teacher.gate.th.submitted">Dikirim</th>
+              <th data-i18n="teacher.gate.th.action">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="gate-pending-body">
+            <tr><td colspan="6" class="muted small" data-i18n="teacher.gate.empty">Tidak ada yang menunggu konfirmasi saat ini.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="teacher-note" id="gate-decide-status"></p>
+    </div>
+
+    <div class="teacher-card">
+      <h2 data-i18n="teacher.progress.title">Progres Siswa (real-time)</h2>
+      <p class="muted small" data-i18n="teacher.progress.desc">Diperbarui otomatis tiap ~8 detik. ID siswa bersifat anonim (tanpa nama), digenerate otomatis per perangkat.</p>
+      <div style="overflow-x:auto;">
+        <table class="roster-table">
+          <thead>
+            <tr><th data-i18n="teacher.th.studentid">ID Siswa</th><th data-i18n="teacher.th.activity">Aktivitas sekarang</th><th data-i18n="teacher.th.lastreport">Terakhir lapor</th></tr>
+          </thead>
+          <tbody id="roster-body">
+            <tr><td colspan="3" class="muted small" data-i18n="teacher.roster.empty">Belum ada siswa yang gabung.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="teacher-note" id="roster-count"></p>
+    </div>
+
+    <div class="teacher-card">
+      <h2 data-i18n="quiz.section.title">Kuis Topik</h2>
+      <p class="muted small" data-i18n="quiz.section.desc">Kelola bank soal per topik (pilihan ganda, jawaban singkat, atau esai), lalu publikasikan ke sesi kelas yang sedang aktif supaya siswa bisa menjawabnya langsung di situs.</p>
+
+      <div class="quiz-toolbar">
+        <div>
+          <label data-i18n="quiz.topic.label">Topik Kuis</label>
+          <select id="quiz-topic-select"></select>
+        </div>
+      </div>
+
+      <details class="advanced-settings">
+        <summary data-i18n="quiz.apikey.label">API key Gemini (untuk Generate Otomatis)</summary>
+        <p class="muted small" data-i18n="quiz.apikey.note">Hanya dipakai untuk membuat soal otomatis lewat AI, tersimpan di browser ini saja. Kosongkan kalau kamu hanya menulis soal manual.</p>
+        <input type="password" id="quiz-apikey-input" placeholder="AIza...">
+      </details>
+
+      <div class="quiz-toolbar" style="margin-top:14px;">
+        <div>
+          <label data-i18n="quiz.generate.count.label">Jumlah soal (maks 10)</label>
+          <input type="number" id="quiz-gen-count" min="1" max="10" value="5">
+        </div>
+        <div>
+          <label data-i18n="quiz.generate.type.label">Tipe soal</label>
+          <select id="quiz-gen-type">
+            <option value="mcq" data-i18n="quiz.type.mcq">Pilihan Ganda (MCQ)</option>
+            <option value="short" data-i18n="quiz.type.short">Jawaban Singkat</option>
+            <option value="essay" data-i18n="quiz.type.essay">Esai / Uraian</option>
+            <option value="mixed" data-i18n="quiz.type.mixed">Campuran</option>
+          </select>
+        </div>
+      </div>
+      <div class="teacher-actions" style="margin-bottom:10px;">
+        <button type="button" id="quiz-generate-btn" class="btn btn-secondary" data-i18n="quiz.generate.btn">Generate Otomatis (AI)</button>
+        <button type="button" id="quiz-addmanual-btn" class="btn btn-secondary" data-i18n="quiz.addmanual.btn">+ Tambah Soal Manual</button>
+      </div>
+      <p class="teacher-note" id="quiz-generate-status"></p>
+
+      <div id="quiz-editor-container"></div>
+
+      <p class="teacher-note" id="quiz-bank-loading-note" data-i18n="quiz.bank.loading">Memuat bank soal...</p>
+      <div id="quiz-question-list" class="quiz-question-list"></div>
+      <p class="muted small" id="quiz-bank-empty-note" data-i18n="quiz.bank.empty" hidden>Belum ada soal untuk topik ini.</p>
+
+      <div class="teacher-actions">
+        <button type="button" id="quiz-save-btn" class="btn btn-primary" data-i18n="quiz.save.btn">Simpan Bank Soal</button>
+        <button type="button" id="quiz-publish-btn" class="btn btn-primary" data-i18n="quiz.publish.btn">Publikasikan ke Sesi Aktif</button>
+      </div>
+      <p class="quiz-status-line" id="quiz-save-status"></p>
+
+      <div id="quiz-active-card" class="quiz-active-card" hidden></div>
+      <div class="teacher-actions">
+        <button type="button" id="quiz-end-btn" class="btn btn-secondary" hidden data-i18n="quiz.end.btn">Akhiri Kuis</button>
+        <button type="button" id="quiz-viewresults-btn" class="btn btn-secondary" data-i18n="quiz.viewresults.btn">Lihat Jawaban Siswa</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="quiz-results-modal" class="modal" hidden>
+  <div class="modal-box quiz-modal-box">
+    <div class="modal-head">
+      <h3 data-i18n="quiz.results.title">Jawaban Siswa</h3>
+      <button type="button" id="quiz-results-close-x" class="icon-btn" data-i18n-aria="chatbot.close.aria" aria-label="Tutup">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <div id="quiz-results-body"></div>
+    <div class="modal-actions">
+      <button type="button" id="quiz-results-close-btn" class="btn btn-secondary" data-i18n="quiz.results.close.btn">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/i18n.js"></script>
+<!-- content.js memakai INCLINE_TROLLEY_SIM (didefinisikan di demo-simulations.js)
+     saat menyusun konten Eksperimen topik Kinematics - wajib dimuat SEBELUM
+     content.js di sini juga (bug lama: sebelumnya cuma ada di index.html,
+     jadi content.js selalu gagal di tengah jalan & mematahkan sisa isinya
+     tiap kali teacher.html dibuka - kena dampak juga oleh field materiCheck/
+     eksperimenCheck topik lain yang baru ditambahkan di content.js). -->
+<script src="js/demo-simulations.js"></script>
+<script src="js/content.js"></script>
+<script src="js/teacher.js"></script>
+<script>applyStaticI18n(); initLangSwitch();</script>
+</body>
+</html>
