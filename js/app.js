@@ -6,7 +6,11 @@ const STORAGE_KEY_BACKEND = "physicsSandbox.backendUrl";
 const STORAGE_KEY_GEMINI = "physicsSandbox.geminiApiKey";
 const STORAGE_KEY_PROGRESS = "physicsSandbox.progress";
 const STORAGE_KEY_UNLOCK_ALL = "physicsSandbox.unlockAll";
-const STORAGE_KEY_ROLE = "physicsSandbox.userRole"; // "student" | "guest"
+// Cara belajar: "class" (belajar di kelas, kode sesi dari guru) | "self" (belajar
+// mandiri, kode belajar mandiri). Nilai lama "student"/"guest" dinormalkan di getUserRole().
+const STORAGE_KEY_ROLE = "physicsSandbox.userRole";
+// Penanda kode belajar mandiri sudah benar di perangkat ini.
+const STORAGE_KEY_SELF_CODE_OK = "physicsSandbox.selfCodeOk";
 const STORAGE_KEY_STUDENT_NAME = "physicsSandbox.studentName";
 const STORAGE_KEY_STUDENT_CLASS = "physicsSandbox.studentClass";
 // Menandai topik mana yang tabel data Eksperimen-nya SUDAH pernah disimpan
@@ -14,9 +18,10 @@ const STORAGE_KEY_STUDENT_CLASS = "physicsSandbox.studentClass";
 // untuk mewajibkan siswa mengisi & menyimpan tabel dulu sebelum tombol
 // "Lanjut ke Latihan Soal" boleh membuka pertanyaan konfirmasi Eksperimen.
 const STORAGE_KEY_EKSDATA_SAVED = "physicsSandbox.eksperimenDataSaved";
-// Penanda bahwa siswa sudah melewati langkah OPSIONAL "kode sesi guru" di gerbang
-// (gabung ATAU dilewati) supaya langkah itu tidak muncul lagi tiap reload.
-const STORAGE_KEY_SESSION_STEP_DONE = "physicsSandbox.sessionStepDone";
+// Penanda bahwa kode sesi guru sudah pernah diterima di perangkat ini (siswa yang
+// belajar di kelas), supaya gerbang tidak meminta kode lagi bila sesi guru
+// berakhir. Nama kunci baru: penanda lama "lewati" tidak boleh meloloskan siapa pun.
+const STORAGE_KEY_SESSION_STEP_DONE = "physicsSandbox.classCodeOk";
 let currentTopic = null;
 let lastGeneratedHTML = "";
 let editCount = 0;
@@ -587,7 +592,10 @@ let classSyncTimer = null;
 let lastClassActivityKey = null; // untuk deteksi kapan guru GANTI aktivitas
 
 function getUserRole() {
-  return localStorage.getItem(STORAGE_KEY_ROLE) || "";
+  const raw = localStorage.getItem(STORAGE_KEY_ROLE) || "";
+  if (raw === "student") return "class";
+  if (raw === "guest") return "self";
+  return (raw === "class" || raw === "self") ? raw : "";
 }
 function getStudentName() {
   return (localStorage.getItem(STORAGE_KEY_STUDENT_NAME) || "").trim();
@@ -2075,7 +2083,7 @@ function openSettingsModal() {
   refreshClassSessionUI();
   const studentDetails = document.getElementById("settings-student-info-details");
   if (studentDetails) {
-    const isStudent = getUserRole() === "student";
+    const isStudent = getUserRole() !== "";
     studentDetails.hidden = !isStudent;
     if (isStudent) {
       document.getElementById("settings-student-name-input").value = getStudentName();
@@ -2112,6 +2120,7 @@ document.getElementById("settings-reset-onboarding-btn").addEventListener("click
   localStorage.removeItem(STORAGE_KEY_UNLOCK_ALL);
   leaveClassSession(null);
   localStorage.removeItem(STORAGE_KEY_SESSION_STEP_DONE);
+  localStorage.removeItem(STORAGE_KEY_SELF_CODE_OK);
   settingsModal.hidden = true;
   applyGate();
 });
@@ -2119,27 +2128,27 @@ document.getElementById("settings-reset-onboarding-btn").addEventListener("click
 /* ============================================================
    Onboarding gate (wajib, layar penuh, sebelum situs bisa diakses)
    ------------------------------------------------------------
-   Urutan: API key -> pilih peran -> (siswa) nama+kelas -> kode dari
-   guru, ATAU (bukan siswa) Kode Eksplorasi Bebas. #site-shell baru
-   ditampilkan setelah computeGateStep() mengembalikan null.
+   Urutan: API key -> cara belajar (di kelas / mandiri) -> nama & kelas ->
+   kode. KEDUA cara wajib memakai kode:
+     - Belajar di kelas : kode sesi dari guru (diverifikasi ke backend)
+     - Belajar mandiri  : kode belajar mandiri (SELF_STUDY_CODE di config.js)
+   #site-shell baru ditampilkan setelah computeGateStep() mengembalikan null.
    ============================================================ */
-const GATE_STEPS = ["apikey", "role", "student-info", "student-code", "guest-code"];
+const GATE_STEPS = ["apikey", "role", "student-info", "student-code", "self-code"];
 
 function computeGateStep() {
   if (!getGeminiApiKey()) return "apikey";
   const role = getUserRole();
-  if (role === "student") {
-    if (!getStudentName() || !getStudentClass()) return "student-info";
-    // Kode sesi guru OPSIONAL: ditawarkan sekali (gabung atau lewati), setelah
-    // itu siswa bisa langsung belajar mandiri.
+  if (!role) return "role";
+  if (!getStudentName() || !getStudentClass()) return "student-info";
+  if (role === "class") {
+    // Wajib punya kode sesi guru. Setelah kode diterima sekali, siswa tidak
+    // dilempar kembali ke gerbang saat sesi berakhir (lihat leaveClassSession).
     if (!isInClassSession() && localStorage.getItem(STORAGE_KEY_SESSION_STEP_DONE) !== "1") return "student-code";
     return null;
   }
-  if (role === "guest") {
-    if (!isUnlockAll()) return "guest-code";
-    return null;
-  }
-  return "role";
+  if (localStorage.getItem(STORAGE_KEY_SELF_CODE_OK) !== "1") return "self-code";
+  return null;
 }
 function showGateStep(step) {
   GATE_STEPS.forEach(s => {
@@ -2195,12 +2204,12 @@ document.getElementById("gate-key-save-btn").addEventListener("click", () => {
   applyGate();
 });
 
-document.getElementById("gate-role-student-btn").addEventListener("click", () => {
-  localStorage.setItem(STORAGE_KEY_ROLE, "student");
+document.getElementById("gate-role-class-btn").addEventListener("click", () => {
+  localStorage.setItem(STORAGE_KEY_ROLE, "class");
   applyGate();
 });
-document.getElementById("gate-role-guest-btn").addEventListener("click", () => {
-  localStorage.setItem(STORAGE_KEY_ROLE, "guest");
+document.getElementById("gate-role-self-btn").addEventListener("click", () => {
+  localStorage.setItem(STORAGE_KEY_ROLE, "self");
   applyGate();
 });
 
@@ -2242,35 +2251,30 @@ document.getElementById("gate-student-code-btn").addEventListener("click", async
 document.getElementById("gate-student-code-input").addEventListener("keydown", (e) => {
   if (e.key === "Enter") document.getElementById("gate-student-code-btn").click();
 });
-document.getElementById("gate-student-code-skip-btn").addEventListener("click", () => {
-  localStorage.setItem(STORAGE_KEY_SESSION_STEP_DONE, "1");
-  applyGate();
-});
 document.getElementById("gate-student-code-back-btn").addEventListener("click", () => {
   showGateStep("student-info");
 });
 
-document.getElementById("gate-guest-code-btn").addEventListener("click", () => {
-  const input = document.getElementById("gate-guest-code-input");
-  const status = document.getElementById("gate-guest-code-status");
+document.getElementById("gate-self-code-btn").addEventListener("click", () => {
+  const input = document.getElementById("gate-self-code-input");
+  const status = document.getElementById("gate-self-code-status");
   const code = input.value.trim();
-  if (!code) { status.textContent = t("gate.guest.code.needcode"); status.classList.remove("ok"); return; }
-  if (TEACHER_UNLOCK_CODE && code.toLowerCase() === TEACHER_UNLOCK_CODE.toLowerCase()) {
-    localStorage.setItem(STORAGE_KEY_UNLOCK_ALL, "true");
+  if (!code) { status.textContent = t("gate.self.code.needcode"); status.classList.remove("ok"); return; }
+  if (SELF_STUDY_CODE && code.toLowerCase() === SELF_STUDY_CODE.toLowerCase()) {
+    localStorage.setItem(STORAGE_KEY_SELF_CODE_OK, "1");
     input.value = "";
     status.textContent = "";
     applyGate();
   } else {
-    status.textContent = t("gate.guest.code.wrong");
+    status.textContent = t("gate.self.code.wrong");
     status.classList.remove("ok");
   }
 });
-document.getElementById("gate-guest-code-input").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") document.getElementById("gate-guest-code-btn").click();
+document.getElementById("gate-self-code-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") document.getElementById("gate-self-code-btn").click();
 });
-document.getElementById("gate-guest-code-back-btn").addEventListener("click", () => {
-  localStorage.removeItem(STORAGE_KEY_ROLE);
-  applyGate();
+document.getElementById("gate-self-code-back-btn").addEventListener("click", () => {
+  showGateStep("student-info");
 });
 
 /* ---------------- Chatbot toggle ---------------- */

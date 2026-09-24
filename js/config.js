@@ -20,6 +20,16 @@
 const DEFAULT_BACKEND_URL = "https://script.google.com/macros/s/AKfycbx28uwByhHg3wFrbPDqypCLybDi0A9MleGLdjKoKyC5yNP4WMe4iDA6q41yGvMMUH4pFg/exec";
 
 /* ============================================================
+   KODE BELAJAR MANDIRI
+   ------------------------------------------------------------
+   Di layar awal siswa memilih "Belajar di kelas" (memakai kode sesi
+   dari guru) atau "Belajar mandiri". Belajar mandiri juga wajib
+   memakai kode: kode di bawah. Bagikan kode ini kepada siswa yang
+   belajar di luar sesi kelas. Ini kode kelas biasa (tidak sensitif
+   seperti API key). Ganti lalu commit & push untuk mengubahnya. */
+const SELF_STUDY_CODE = "fisika-merdeka";
+
+/* ============================================================
    KODE EKSPLORASI BEBAS (untuk guru)
    ------------------------------------------------------------
    Situs ini membuka topik & tab secara BERTAHAP (sesuai urutan

@@ -55,13 +55,23 @@ const I18N_STRINGS = {
   "gate.key.needkey": { id: "Tempel API key Gemini dulu.", en: "Paste your Gemini API key first." },
   "gate.step1.footnote": { id: "Free tier Gemini punya batas kuota harian yang wajar untuk satu kelas, cek angka terbaru di <a href=\"https://ai.google.dev/gemini-api/docs/rate-limits\" target=\"_blank\" rel=\"noopener\">ai.google.dev/gemini-api/docs/rate-limits</a>. Jangan masukkan data pribadi ke dalam prompt simulasi.", en: "The Gemini free tier has a reasonable daily quota for one class - check the latest numbers at <a href=\"https://ai.google.dev/gemini-api/docs/rate-limits\" target=\"_blank\" rel=\"noopener\">ai.google.dev/gemini-api/docs/rate-limits</a>. Don't put personal data into simulation prompts." },
 
-  "gate.step2.title": { id: "Langkah 2: Kamu siapa?", en: "Step 2: Who are you?" },
-  "gate.step2.desc": { id: "Pilih salah satu supaya situs menuntunmu lewat alur yang tepat.", en: "Pick one so the site can guide you through the right flow." },
-  "gate.role.student.title": { id: "Saya siswa", en: "I'm a student" },
-  "gate.role.student.desc": { id: "Isi nama & kelas, lalu belajar mandiri sesuai kecepatanmu. Kalau gurumu menjalankan sesi kelas, kamu boleh gabung dengan kode dari guru (opsional).", en: "Enter your name & class, then study independently at your own pace. If your teacher is running a class session, you may join with the teacher's code (optional)." },
-  "gate.role.guest.title": { id: "Bukan siswa (guru/pengelola/lainnya)", en: "Not a student (teacher/admin/other)" },
-  "gate.role.guest.desc": { id: "Masukkan Kode Eksplorasi Bebas untuk langsung membuka semua topik.", en: "Enter a Free Exploration Code to unlock all topics right away." },
 
+  "gate.step2.title": { id: "Langkah 2: Bagaimana kamu belajar?", en: "Step 2: How are you studying?" },
+  "gate.step2.desc": { id: "Pilih salah satu. Keduanya memakai kode: kode sesi dari gurumu untuk belajar di kelas, atau kode belajar mandiri.", en: "Pick one. Both need a code: the session code from your teacher for learning in class, or the self-study code." },
+  "gate.role.class.title": { id: "Belajar di kelas", en: "Learning in class" },
+  "gate.role.class.desc": { id: "Isi nama & kelas, lalu masukkan kode sesi dari gurumu untuk belajar bersama sesuai sesi kelas.", en: "Enter your name & class, then enter the session code from your teacher to learn along with the class session." },
+  "gate.role.self.title": { id: "Belajar mandiri", en: "Self-study" },
+  "gate.role.self.desc": { id: "Isi nama & kelas, lalu masukkan kode belajar mandiri untuk belajar sesuai kecepatanmu sendiri.", en: "Enter your name & class, then enter the self-study code to learn at your own pace." },
+  "gate.step4s.title": { id: "Langkah 4: Kode sesi dari guru", en: "Step 4: Session code from your teacher" },
+  "gate.step4s.desc": { id: "Tanyakan ke gurumu kode sesi kelas yang sedang berjalan sekarang, lalu masukkan di sini untuk bergabung.", en: "Ask your teacher for the code of the class session that is running now, then enter it here to join." },
+  "gate.step4m.title": { id: "Langkah 4: Kode belajar mandiri", en: "Step 4: Self-study code" },
+  "gate.step4m.desc": { id: "Masukkan kode belajar mandiri untuk mulai. Kamu tetap membuka tab satu per satu: lanjut dari Materi ke Eksperimen begitu skor kuis pemahamanmu mencapai 80%.", en: "Enter the self-study code to start. You still open tabs one by one: move on from Materials to Experiment once your understanding quiz score reaches 80%." },
+  "gate.self.code.placeholder": { id: "Kode belajar mandiri", en: "Self-study code" },
+  "gate.self.code.needcode": { id: "Masukkan kode belajar mandiri dulu.", en: "Enter the self-study code first." },
+  "gate.self.code.wrong": { id: "Kode belajar mandiri salah. Periksa kembali kodenya atau tanyakan ke gurumu.", en: "Wrong self-study code. Check it again or ask your teacher." },
+  "action.start": { id: "Mulai", en: "Start" },
+  "settings.resetonboarding": { id: "Ulangi proses awal (ganti cara belajar: kelas/mandiri)", en: "Restart onboarding (change how you study: class/self-study)" },
+  "settings.studentinfo.summary": { id: "Data Diri", en: "Your Details" },
   "gate.step3s.title": { id: "Langkah 3: Data diri singkat", en: "Step 3: A few quick details" },
   "gate.step3s.desc": { id: "Supaya gurumu bisa mengenali progresmu di Panel Guru.", en: "So your teacher can recognize your progress in the Teacher Panel." },
   "field.fullname": { id: "Nama lengkap", en: "Full name" },
@@ -72,21 +82,12 @@ const I18N_STRINGS = {
   "action.back": { id: "Kembali", en: "Back" },
   "gate.student.needinfo": { id: "Isi nama dan kelas dulu.", en: "Fill in your name and class first." },
 
-  "gate.step4s.title": { id: "Langkah 4 (opsional): Kode sesi dari guru", en: "Step 4 (optional): Session code from your teacher" },
-  "gate.step4s.desc": { id: "Kalau gurumu sedang menjalankan sesi kelas, masukkan kodenya untuk gabung. Kalau tidak, lewati saja dan belajar mandiri: kamu tetap bisa lanjut dari Materi ke Eksperimen begitu skor kuis pemahamanmu minimal 80%, tanpa menunggu guru.", en: "If your teacher is running a class session, enter its code to join. Otherwise just skip and study independently: you can still move from Material to Experiment once your understanding-check score is at least 80%, without waiting for your teacher." },
-  "gate.student.code.skip": { id: "Lewati, belajar mandiri", en: "Skip, study independently" },
   "gate.student.code.placeholder": { id: "Kode dari guru", en: "Code from your teacher" },
   "action.join": { id: "Gabung", en: "Join" },
   "gate.student.code.back": { id: "Ubah nama/kelas", en: "Change name/class" },
   "gate.student.code.needcode": { id: "Masukkan kode dari guru dulu.", en: "Enter the code from your teacher first." },
   "gate.student.code.connecting": { id: "Menghubungkan...", en: "Connecting..." },
 
-  "gate.step3g.title": { id: "Langkah 3: Kode Eksplorasi Bebas", en: "Step 3: Free Exploration Code" },
-  "gate.step3g.desc": { id: "Masukkan kode dari guru/pengelola situs untuk membuka akses penuh ke semua topik.", en: "Enter the code from your teacher/site admin to unlock full access to all topics." },
-  "gate.guest.code.placeholder": { id: "Kode eksplorasi", en: "Exploration code" },
-  "action.unlockaccess": { id: "Buka Akses", en: "Unlock Access" },
-  "gate.guest.code.needcode": { id: "Masukkan kode eksplorasi dulu.", en: "Enter the exploration code first." },
-  "gate.guest.code.wrong": { id: "Kode salah. Tanyakan Kode Eksplorasi Bebas ke guru/pengelola situs.", en: "Wrong code. Ask your teacher/site admin for the Free Exploration Code." },
 
   /* ---------------- Header ---------------- */
   "header.home.title": { id: "Kembali ke Beranda", en: "Back to Home" },
@@ -268,11 +269,9 @@ const I18N_STRINGS = {
   "settings.classsession.notjoined": { id: "Belum gabung sesi kelas manapun.", en: "Not joined to any class session yet." },
   "settings.classsession.left": { id: "Sesi kelas sudah berakhir - kamu kembali ke mode belajar mandiri.", en: "The class session has ended - you're back to independent study mode." },
 
-  "settings.studentinfo.summary": { id: "Data Diri (Siswa)", en: "Your Details (Student)" },
   "settings.studentinfo.savebtn": { id: "Simpan Data Diri", en: "Save Details" },
   "settings.studentinfo.saved": { id: "Data diri tersimpan.", en: "Your details have been saved." },
 
-  "settings.resetonboarding": { id: "Ulangi proses awal (ganti peran siswa/bukan siswa)", en: "Restart onboarding (change student/non-student role)" },
   "settings.save": { id: "Simpan", en: "Save" },
   "settings.close": { id: "Tutup", en: "Close" },
 
