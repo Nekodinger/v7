@@ -94,13 +94,17 @@ function getUnlockedTabIndex(topicId) {
 function isTabLocked(topicId, tabName) {
   const topic = TOPICS.find(tp => tp.id === topicId);
   if (!topic || topic.status !== "ready") return false;
-  // Sesi kelas aktif (dari guru) mengalahkan semua gembok lain (termasuk
-  // Kode Eksplorasi Bebas) - selama tergabung, HANYA tab yang sedang
-  // ditentukan guru untuk topik ini yang boleh dibuka.
-  if (isInClassSession()) {
-    if (topicId !== classSession.topicId) return true;
-    return TAB_ORDER.indexOf(tabName) !== classSession.tabIndex;
-  }
+  // Sesi kelas aktif (dari guru) membatasi TOPIK - siswa hanya boleh berada
+  // di topik yang sedang dipilih guru. (Diubah 2026-09-24, lanjutan lagi
+  // lagi: sebelumnya sesi kelas JUGA memaksa TAB persis sama dengan yang
+  // ditentukan guru, mengalahkan progres gate individual siswa. Sekarang
+  // akses TAB di dalam topik itu murni mengikuti progres gate individual
+  // siswa sendiri - persis seperti di luar sesi kelas - supaya siswa yang
+  // sudah lulus checkpoint-nya sendiri (mis. high achiever) bisa lanjut ke
+  // tab berikutnya, bahkan ke Makerspace, tanpa menunggu guru mengubah
+  // aktivitas kelas, sementara siswa yang belum lulus tetap terkunci di tab
+  // yang sudah dicapainya, default-nya Materi.)
+  if (isInClassSession() && topicId !== classSession.topicId) return true;
   const unlocked = getUnlockedTabIndex(topicId);
   return TAB_ORDER.indexOf(tabName) > unlocked;
 }
@@ -621,12 +625,16 @@ async function syncClassSession() {
 }
 function goToClassSessionActivity() {
   if (!isInClassSession() || !classSession.topicId) return;
-  const tabName = TAB_ORDER[classSession.tabIndex] || "materi";
+  // Yang dipaksa sesi kelas hanyalah TOPIK-nya. Tab tujuan sepenuhnya
+  // mengikuti progres gate individual siswa sendiri di topik itu - bisa
+  // lebih maju dari tab yang sedang disorot guru (high achiever), bisa
+  // juga masih di Materi kalau memang belum lulus checkpoint-nya sendiri.
+  const targetTab = TAB_ORDER[Math.min(getUnlockedTabIndex(classSession.topicId), TAB_ORDER.length - 1)] || "materi";
   if (!currentTopic || currentTopic.id !== classSession.topicId) {
-    selectTopic(classSession.topicId); // aman: id di sini SAMA dengan tujuan yang diizinkan sesi
+    selectTopic(classSession.topicId); // aman: id di sini SAMA dengan topik yang diizinkan sesi
   }
-  if (document.querySelector(".tab-btn.active")?.dataset.tab !== tabName) {
-    switchTab(tabName);
+  if (document.querySelector(".tab-btn.active")?.dataset.tab !== targetTab) {
+    switchTab(targetTab);
   }
   updateClassSessionBanner();
 }
@@ -635,11 +643,13 @@ function updateClassSessionBanner() {
   const textEl = document.getElementById("class-session-text");
   if (!isInClassSession() || !classSession.topicId) { banner.hidden = true; return; }
   const topic = TOPICS.find(tp => tp.id === classSession.topicId);
-  const tabLabel = TAB_LABELS[TAB_ORDER[classSession.tabIndex]] || "";
-  const onTarget = currentTopic && currentTopic.id === classSession.topicId &&
-    document.querySelector(".tab-btn.active")?.dataset.tab === TAB_ORDER[classSession.tabIndex];
+  // Hanya topik yang dipaksa sesi kelas sekarang, jadi banner cuma relevan
+  // kalau siswa sedang berada di topik LAIN dari pilihan guru - bukan lagi
+  // soal tab, supaya siswa yang sudah maju lebih jauh dari progresnya
+  // sendiri (yang sah) tidak terus-terusan disodori banner "pindah ke sana".
+  const onTarget = currentTopic && currentTopic.id === classSession.topicId;
   if (onTarget) { banner.hidden = true; return; }
-  textEl.textContent = t("classsession.bannertext", { topic: topic ? trContent(topic.title) : "", tab: tabLabel });
+  textEl.textContent = t("classsession.bannertext", { topic: topic ? trContent(topic.title) : "" });
   banner.hidden = false;
 }
 document.getElementById("class-session-go-btn").addEventListener("click", goToClassSessionActivity);
@@ -990,12 +1000,16 @@ function scheduleHideSidebarPeek() {
 // siswa/guru yang lupa masih tergabung di sesi kelas lama gampang mengira ini
 // bug (tab "tidak mau kebuka" padahal sudah jawab benar), padahal cukup keluar
 // dari sesi kelas atau minta guru memindahkan aktivitas ke tab yang dituju.
-function tabLockToastMessage() {
-  return isInClassSession() ? t("toast.classlocked") : t("toast.tablocked");
+function tabLockToastMessage(topicId) {
+  // Sejak tab dalam topik yang sama tidak lagi dikunci sesi kelas (lihat
+  // isTabLocked), satu-satunya alasan sesi kelas masih relevan di sini
+  // adalah kalau topicId-nya sendiri bukan topik yang dipilih guru.
+  if (isInClassSession() && topicId !== classSession.topicId) return t("toast.classlocked");
+  return t("toast.tablocked");
 }
 function switchTab(tabName) {
   if (currentTopic && isTabLocked(currentTopic.id, tabName)) {
-    showToast(tabLockToastMessage());
+    showToast(tabLockToastMessage(currentTopic.id));
     return;
   }
   document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tabName));
@@ -1009,7 +1023,7 @@ function switchTab(tabName) {
 document.querySelectorAll(".tab-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     if (currentTopic && isTabLocked(currentTopic.id, btn.dataset.tab)) {
-      showToast(tabLockToastMessage());
+      showToast(tabLockToastMessage(currentTopic.id));
       return;
     }
     switchTab(btn.dataset.tab);
@@ -1487,29 +1501,76 @@ function computeVirtualReadingGrams(topic, I) {
 // kawat di bagian yang "masuk" ke dalam magnet, hanya terlihat di celahnya.
 function renderVlabApparatusSVG() {
   return `
-    <svg class="vlab-diagram" viewBox="0 0 340 215" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${escapeAttr(t("vlab.diagram.alt"))}">
-      <path class="vlab-wire-flow" d="M125,140 L160,140 L160,90 L300,90 L300,140 L125,140" fill="none" stroke="#c17a3f" stroke-width="3" stroke-linejoin="round"/>
-      <rect x="183" y="108" width="94" height="10" rx="2" fill="var(--muted)"/>
-      <rect x="183" y="68" width="22" height="44" rx="3" fill="#b23b3b"/>
-      <text x="194" y="94" font-size="10" fill="#ffffff" text-anchor="middle" font-weight="700">N</text>
-      <rect x="255" y="68" width="22" height="44" rx="3" fill="#3b6bb2"/>
-      <text x="266" y="94" font-size="10" fill="#ffffff" text-anchor="middle" font-weight="700">S</text>
-      <rect x="170" y="118" width="120" height="8" fill="var(--muted)"/>
-      <rect x="150" y="126" width="160" height="55" rx="8" fill="var(--panel-light)" stroke="var(--border)" stroke-width="1.5"/>
-      <rect x="195" y="140" width="70" height="26" rx="3" fill="#0d1f16"/>
-      <text id="vlab-balance-display" x="230" y="158" font-family="'Courier New', monospace" font-size="14" fill="#3ee879" text-anchor="middle">0,00 g</text>
-      <text x="230" y="196" font-size="8.5" fill="var(--muted)" text-anchor="middle">${t("vlab.diagram.balance")}</text>
-      <rect x="15" y="125" width="110" height="75" rx="8" fill="var(--panel-light)" stroke="var(--border)" stroke-width="1.5"/>
-      <circle cx="70" cy="155" r="24" fill="var(--panel)" stroke="var(--border)" stroke-width="2"/>
-      <line x1="70" y1="139" x2="70" y2="134" stroke="var(--muted)" stroke-width="1.5"/>
-      <line x1="49.2" y1="146.2" x2="45.7" y2="141.3" stroke="var(--muted)" stroke-width="1.5"/>
-      <line x1="90.8" y1="146.2" x2="94.3" y2="141.3" stroke="var(--muted)" stroke-width="1.5"/>
-      <line x1="42" y1="163" x2="37" y2="164.5" stroke="var(--muted)" stroke-width="1.5"/>
-      <line x1="98" y1="163" x2="103" y2="164.5" stroke="var(--muted)" stroke-width="1.5"/>
-      <line id="vlab-ammeter-needle" class="vlab-ammeter-needle" x1="70" y1="155" x2="70" y2="134" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"/>
-      <circle cx="70" cy="155" r="3" fill="var(--text)"/>
-      <text x="70" y="146" font-size="8" fill="var(--muted)" text-anchor="middle">A</text>
-      <text x="70" y="212" font-size="8.5" fill="var(--muted)" text-anchor="middle">${t("vlab.diagram.supply")}</text>
+    <svg class="vlab-diagram" viewBox="0 0 415 240" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${escapeAttr(t("vlab.diagram.alt"))}">
+      <!-- Kawat sirkuit netral: catu daya -> amperemeter -> klem kiri, dan
+           klem kanan -> kembali ke catu daya. Digambar dulu supaya nanti
+           tertutup badan amperemeter & kotak catu daya di ujung-ujungnya. -->
+      <path class="vlab-wire-flow" d="M26,178 L26,105 L41,105 M89,105 L125,105 M340,105 L365,105 L365,150 L66,150 L66,178"
+        fill="none" stroke="var(--muted)" stroke-width="2.5" stroke-linejoin="round"/>
+
+      <!-- Kawat uji (dijepit crocodile clip di kedua ujung, melewati celah
+           magnet) - digambar SEBELUM magnet supaya bagian yang "masuk" ke
+           dalam blok magnet otomatis tertutup, hanya terlihat di celahnya. -->
+      <path class="vlab-wire-flow" d="M125,105 L340,105" fill="none" stroke="#cc3333" stroke-width="3.5" stroke-linecap="round"/>
+
+      <!-- Magnet Magnadur (N kiri, S kanan) di atas yoke besi lunak -->
+      <rect x="188" y="83" width="26" height="45" rx="3" fill="#b23b3b"/>
+      <text x="201" y="109" font-size="10" fill="#ffffff" text-anchor="middle" font-weight="700">N</text>
+      <rect x="250" y="83" width="26" height="45" rx="3" fill="#3b6bb2"/>
+      <text x="263" y="109" font-size="10" fill="#ffffff" text-anchor="middle" font-weight="700">S</text>
+      <rect x="178" y="128" width="108" height="8" fill="var(--muted)"/>
+
+      <!-- Neraca timbang elektronik (top-pan balance) berbentuk piringan bundar -->
+      <ellipse cx="232" cy="136" rx="88" ry="9" fill="var(--panel)" stroke="var(--border)" stroke-width="1.3"/>
+      <rect x="157" y="142" width="150" height="55" rx="8" fill="var(--panel-light)" stroke="var(--border)" stroke-width="1.5"/>
+      <rect x="197" y="157" width="66" height="26" rx="3" fill="#0d1f16"/>
+      <text id="vlab-balance-display" x="230" y="175" font-family="'Courier New', monospace" font-size="14" fill="#3ee879" text-anchor="middle">0,00 g</text>
+      <text x="232" y="212" font-size="8.5" fill="var(--muted)" text-anchor="middle">${t("vlab.diagram.balance")}</text>
+
+      <!-- Klem (clamp) kiri berdiri di meja, memegang kawat lewat crocodile clip -->
+      <line x1="125" y1="105" x2="125" y2="175" stroke="var(--muted)" stroke-width="3" stroke-linecap="round"/>
+      <rect x="117" y="175" width="16" height="6" rx="2" fill="var(--muted)"/>
+      <path d="M117,98 L125,105 L117,112" stroke="var(--text)" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path d="M133,98 L125,105 L133,112" stroke="var(--text)" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <text x="125" y="76" font-size="6.5" fill="var(--muted)" text-anchor="middle">${t("vlab.diagram.crocclip")}</text>
+      <text x="125" y="193" font-size="6.5" fill="var(--muted)" text-anchor="middle">${t("vlab.diagram.clamp")}</text>
+
+      <!-- Klem kanan (simetris) -->
+      <line x1="340" y1="105" x2="340" y2="175" stroke="var(--muted)" stroke-width="3" stroke-linecap="round"/>
+      <rect x="332" y="175" width="16" height="6" rx="2" fill="var(--muted)"/>
+      <path d="M332,98 L340,105 L332,112" stroke="var(--text)" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path d="M348,98 L340,105 L348,112" stroke="var(--text)" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+      <!-- Amperemeter -->
+      <circle cx="65" cy="105" r="24" fill="var(--panel)" stroke="var(--border)" stroke-width="2"/>
+      <line x1="65" y1="89" x2="65" y2="84" stroke="var(--muted)" stroke-width="1.5"/>
+      <line x1="44.2" y1="96.2" x2="40.7" y2="91.3" stroke="var(--muted)" stroke-width="1.5"/>
+      <line x1="85.8" y1="96.2" x2="89.3" y2="91.3" stroke="var(--muted)" stroke-width="1.5"/>
+      <line x1="37" y1="113" x2="32" y2="114.5" stroke="var(--muted)" stroke-width="1.5"/>
+      <line x1="93" y1="113" x2="98" y2="114.5" stroke="var(--muted)" stroke-width="1.5"/>
+      <line id="vlab-ammeter-needle" class="vlab-ammeter-needle" x1="65" y1="105" x2="65" y2="84" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"/>
+      <circle cx="65" cy="105" r="3" fill="var(--text)"/>
+      <text x="65" y="96" font-size="8" fill="var(--muted)" text-anchor="middle">A</text>
+
+      <!-- Catu daya (variable supply) dengan terminal +/- -->
+      <rect x="12" y="178" width="68" height="40" rx="5" fill="var(--panel-light)" stroke="var(--border)" stroke-width="1.5"/>
+      <line x1="20" y1="208" x2="64" y2="186" stroke="var(--accent)" stroke-width="1.8"/>
+      <polygon points="64,186 57,187 61,192" fill="var(--accent)"/>
+      <circle cx="26" cy="178" r="3.5" fill="var(--panel)" stroke="var(--muted)" stroke-width="1.5"/>
+      <text x="26" y="171" font-size="9" fill="var(--text)" text-anchor="middle">+</text>
+      <circle cx="66" cy="178" r="3.5" fill="var(--panel)" stroke="var(--muted)" stroke-width="1.5"/>
+      <text x="66" y="171" font-size="9" fill="var(--text)" text-anchor="middle">-</text>
+      <text x="46" y="231" font-size="8.5" fill="var(--muted)" text-anchor="middle">${t("vlab.diagram.supply")}</text>
+
+      <!-- Inset "plan view": posisi kutub magnet dilihat dari atas + arah medan -->
+      <rect x="320" y="8" width="86" height="62" rx="6" fill="var(--panel-light)" stroke="var(--border)" stroke-width="1.3"/>
+      <rect x="330" y="16" width="66" height="18" fill="#3b6bb2"/>
+      <text x="363" y="28.5" font-size="10" fill="#ffffff" text-anchor="middle" font-weight="700">S</text>
+      <rect x="330" y="40" width="66" height="18" fill="#b23b3b"/>
+      <text x="363" y="52.5" font-size="10" fill="#ffffff" text-anchor="middle" font-weight="700">N</text>
+      <line x1="326" y1="37" x2="400" y2="37" stroke="#cc3333" stroke-width="2"/>
+      <polygon points="400,33 407,37 400,41" fill="#cc3333"/>
+      <text x="363" y="80" font-size="7.5" fill="var(--muted)" text-anchor="middle">${t("vlab.diagram.planview")}</text>
     </svg>
   `;
 }

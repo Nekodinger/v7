@@ -57,10 +57,10 @@ const I18N_STRINGS = {
 
   "gate.step2.title": { id: "Langkah 2: Kamu siapa?", en: "Step 2: Who are you?" },
   "gate.step2.desc": { id: "Pilih salah satu supaya situs menuntunmu lewat alur yang tepat.", en: "Pick one so the site can guide you through the right flow." },
-  "gate.role.student.title": { id: "Saya siswa", en: "I'm a student" },
+  "gate.role.student.title": { id: "Belajar di Kelas", en: "Learning in Class" },
   "gate.role.student.desc": { id: "Isi nama & kelas, lalu masukkan kode dari guru untuk belajar bersama sesuai sesi kelas.", en: "Enter your name & class, then enter the code from your teacher to join the class session." },
-  "gate.role.guest.title": { id: "Bukan siswa (guru/pengelola/lainnya)", en: "Not a student (teacher/admin/other)" },
-  "gate.role.guest.desc": { id: "Masukkan Kode Eksplorasi Bebas untuk langsung membuka semua topik.", en: "Enter a Free Exploration Code to unlock all topics right away." },
+  "gate.role.guest.title": { id: "Belajar Mandiri", en: "Independent Learning" },
+  "gate.role.guest.desc": { id: "Masukkan Kode Eksplorasi Bebas dari guru untuk belajar sendiri secara bebas tanpa sesi kelas.", en: "Enter the Free Exploration Code from your teacher to learn on your own, without a class session." },
 
   "gate.step3s.title": { id: "Langkah 3: Data diri singkat", en: "Step 3: A few quick details" },
   "gate.step3s.desc": { id: "Supaya gurumu bisa mengenali progresmu di Panel Guru.", en: "So your teacher can recognize your progress in the Teacher Panel." },
@@ -272,7 +272,7 @@ const I18N_STRINGS = {
 
   /* ---------------- Sesi kelas & lain-lain (dinamis app.js) ---------------- */
   "nav.sessiondot.title": { id: "Aktivitas kelas sekarang", en: "Current class activity" },
-  "classsession.bannertext": { id: "Sesi kelas aktif - guru meminta semua mengerjakan: {{topic}} - {{tab}} sekarang.", en: "Class session active - your teacher wants everyone working on: {{topic}} - {{tab}} now." },
+  "classsession.bannertext": { id: "Sesi kelas aktif - guru meminta semua mengerjakan topik: {{topic}} sekarang.", en: "Class session active - your teacher wants everyone working on the topic: {{topic}} now." },
   "backend.notconfigured.short": { id: "Backend belum dikonfigurasi. Hubungi pengelola situs.", en: "Backend isn't configured yet. Contact the site admin." },
   "classsession.wrongcode": { id: "Kode salah, atau sesi belum/sudah tidak aktif. Tanyakan gurumu.", en: "Wrong code, or the session isn't active anymore. Ask your teacher." },
   "classsession.connectfailed": { id: "Gagal terhubung ke server: {{err}}", en: "Couldn't connect to the server: {{err}}" },
@@ -406,9 +406,12 @@ const I18N_STRINGS = {
   "vlab.empty": { id: "Isi prediksi (2a) dan minimal satu baris data tabel dulu sebelum menyimpan.", en: "Fill in your prediction (2a) and at least one row of table data before saving." },
   "vlab.graph.axis.i": { id: "I (A)", en: "I (A)" },
   "vlab.graph.axis.f": { id: "F (N)", en: "F (N)" },
-  "vlab.diagram.alt": { id: "Animasi skema alat: catu daya dan amperemeter di kiri, kawat berarus melewati celah sepasang magnet Magnadur, magnet bertumpu di atas neraca timbang elektronik yang menampilkan pembacaan.", en: "Animated apparatus schematic: DC supply and ammeter on the left, current-carrying wire passing through the gap between a pair of Magnadur magnets, the magnets resting on an electronic top-pan balance showing the reading." },
-  "vlab.diagram.balance": { id: "Neraca Timbang Elektronik", en: "Electronic Top-Pan Balance" },
-  "vlab.diagram.supply": { id: "Catu Daya + Amperemeter", en: "DC Supply + Ammeter" },
+  "vlab.diagram.alt": { id: "Animasi skema alat: catu daya (variable supply) dan amperemeter di kiri, kawat berarus dijepit sepasang klem crocodile clip lalu melewati celah sepasang magnet Magnadur, magnet bertumpu di atas neraca timbang top-pan balance yang menampilkan pembacaan, dengan inset tampak atas menunjukkan susunan kutub S/N dan arah medan magnet.", en: "Animated apparatus schematic: a variable supply and ammeter on the left, a current-carrying wire held by crocodile clips on clamp stands passing through the gap between a pair of Magnadur magnets, the magnets resting on a top-pan balance showing the reading, with a plan-view inset showing the S/N pole arrangement and field direction." },
+  "vlab.diagram.balance": { id: "Top-Pan Balance", en: "Top-Pan Balance" },
+  "vlab.diagram.supply": { id: "Variable Supply", en: "Variable Supply" },
+  "vlab.diagram.crocclip": { id: "Klip Buaya", en: "Crocodile Clip" },
+  "vlab.diagram.clamp": { id: "Klem", en: "Clamp" },
+  "vlab.diagram.planview": { id: "Tampak Atas", en: "Plan View" },
 
   /* ---------------- Kuis Topik (Panel Guru + siswa) ---------------- */
   "quiz.section.title": { id: "Kuis Topik", en: "Topic Quiz" },
