@@ -212,6 +212,8 @@ test("T8 simpan tabel gagal (spreadsheet error) tidak boleh dianggap tersimpan",
   await page.waitForFunction(() => document.getElementById("eks-dt-status").textContent.length > 0 && !document.getElementById("eks-dt-save-btn").disabled);
   const flagged = await page.evaluate(() => getEksperimenDataSavedFlag("magnetic-fields"));
   assert(!flagged, "tabel ditandai tersimpan padahal spreadsheet gagal ditulis");
+  const local = await page.evaluate(() => getEksperimenDataLocalFlag("magnetic-fields"));
+  assert(local, "data lokal seharusnya tetap dianggap siap agar siswa tidak terkunci");
 });
 
 test("T9 generator: susun prompt -> generate -> preview -> edit lanjutan (semua topik ready)", async ctx => {
@@ -739,6 +741,64 @@ test("T32 gerbang: penanda 'lewati' versi lama tidak meloloskan; ulangi proses a
   await page.click("#settings-reset-onboarding-btn");
   assert(await page.locator("#gate-step-role").isVisible(), "reset tidak kembali ke pilihan cara belajar");
   assert(await page.evaluate(() => localStorage.getItem("physicsSandbox.selfCodeOk")) === null, "penanda kode mandiri tidak dihapus saat reset");
+});
+
+test("T33 backend lama ('Prompt kosong.') tidak mengunci: pesan jelas + Next tetap membuka konfirmasi guru", async ctx => {
+  const { page } = await loginAsStudent(ctx, { mode: "independent" });
+  await reachEksperimen(page, "lab");
+  await mock({ staleEks: true });
+  await page.fill('.eks-dt-input[data-row="0"][data-col="0"]', "10");
+  await page.click("#eks-dt-save-btn");
+  await page.waitForFunction(() => /Prompt kosong/i.test(document.getElementById("eks-dt-status").textContent), null, { timeout: 5000 });
+  const st = await page.textContent("#eks-dt-status");
+  assert(/deploy|perangkat/i.test(st), "pesan tidak menjelaskan penyebab & langkah lanjut: " + st);
+  assert(!(await page.evaluate(() => getEksperimenDataSavedFlag("magnetic-fields"))), "flag server tidak boleh menyala");
+  await page.click("#progress-next-btn");
+  await page.waitForSelector("#confirm-modal:not([hidden])", { timeout: 3000 });
+  const corr = await page.evaluate(() => currentTopic.eksperimenCheck.map(q => q.correct));
+  for (let i = 0; i < corr.length; i++) await page.check(`input[name="cq-${i}"][value="${corr[i]}"]`);
+  await page.click("#confirm-modal-submit-btn");
+  await page.waitForTimeout(400);
+  const pend = (await api({ mode: "teacher_roster", controlCode: CONTROL_CODE })).gatePending;
+  assert(pend.length === 1, "permintaan persetujuan tidak sampai ke guru: " + JSON.stringify(pend));
+});
+
+test("T34 Next tetap terkunci bila tabel belum pernah disimpan; gate_submit gagal dibatalkan agar bisa kirim ulang", async ctx => {
+  const { page } = await loginAsStudent(ctx, { mode: "independent" });
+  await reachEksperimen(page, "lab");
+  await page.click("#progress-next-btn");
+  await page.waitForTimeout(300);
+  assert(!(await page.locator("#confirm-modal").isVisible()), "modal terbuka padahal tabel belum diisi/disimpan");
+  await page.fill('.eks-dt-input[data-row="0"][data-col="0"]', "10");
+  await page.click("#eks-dt-save-btn");
+  await page.waitForFunction(() => /tersimpan|saved/i.test(document.getElementById("eks-dt-status").textContent));
+  await mock({ gateSubmitError: true });
+  await page.click("#progress-next-btn");
+  const corr = await page.evaluate(() => currentTopic.eksperimenCheck.map(q => q.correct));
+  for (let i = 0; i < corr.length; i++) await page.check(`input[name="cq-${i}"][value="${corr[i]}"]`);
+  await page.click("#confirm-modal-submit-btn");
+  await page.waitForTimeout(600);
+  const cached = await page.evaluate(() => getGateCacheEntry("magnetic-fields", "eksperimen"));
+  assert(!cached, "status 'menunggu' palsu masih tersimpan setelah server menolak: " + JSON.stringify(cached));
+});
+
+test("T35 URL backend LAMA tersimpan di Pengaturan ('Prompt kosong.') otomatis diganti URL bawaan situs", async ctx => {
+  const { page } = await loginAsStudent(ctx, { mode: "independent" });
+  // URL bawaan situs (config.js, host script.google.com) diarahkan ke server uji;
+  // semua host luar lain tetap diblokir oleh newContext().
+  await ctx.route("https://script.google.com/**", async route => {
+    const r = await fetch(BASE + "/exec", { method: "POST", body: route.request().postData() });
+    await route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: await r.text() });
+  });
+  await reachEksperimen(page, "lab");
+  // Simulasi browser yang masih menyimpan URL deployment lama: server palsu kedua
+  // (path /exec-lama) selalu menjawab "Prompt kosong." seperti backend lama.
+  await page.evaluate(() => localStorage.setItem("physicsSandbox.backendUrl", location.origin + "/exec-lama"));
+  await page.fill('.eks-dt-input[data-row="0"][data-col="0"]', "10");
+  await page.click("#eks-dt-save-btn");
+  await page.waitForFunction(() => /tersimpan|saved/i.test(document.getElementById("eks-dt-status").textContent) && !/BELUM|NOT/.test(document.getElementById("eks-dt-status").textContent), null, { timeout: 6000 });
+  assert(await page.evaluate(() => getEksperimenDataSavedFlag("magnetic-fields")), "flag server harus menyala setelah retry ke URL bawaan");
+  assert(await page.evaluate(() => localStorage.getItem("physicsSandbox.backendUrl")) === null, "URL lama tidak dibuang");
 });
 
 

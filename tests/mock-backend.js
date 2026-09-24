@@ -11,7 +11,7 @@
    Endpoint bantu (hanya untuk tes):
      POST /__reset       -> reset SEMUA state server (sesi kelas, gate, kuis, sheet)
      GET  /__state       -> isi sheet tersimpan + log panggilan Gemini palsu
-     POST /__mock        -> ubah perilaku Gemini palsu {geminiStatus, sheetFail, simHtml}
+     POST /__mock        -> ubah perilaku Gemini palsu {geminiStatus, sheetFail, simHtml, staleEks, gateSubmitError}
    ============================================================ */
 const http = require("http");
 const fs = require("fs");
@@ -27,7 +27,7 @@ let geminiLog = [];
 let sheets = {};
 
 function resetMockCfg() {
-  mockCfg = { geminiStatus: 200, sheetFail: false, simHtml: null, chatReply: null };
+  mockCfg = { geminiStatus: 200, sheetFail: false, simHtml: null, chatReply: null, staleEks: false, gateSubmitError: false };
 }
 
 function fakeSimHtml() {
@@ -124,8 +124,23 @@ http.createServer((req, res) => {
   const url = new URL(req.url, "http://localhost");
   const readBody = cb => { let b = ""; req.on("data", d => (b += d)); req.on("end", () => cb(b)); };
 
+  // Backend LAMA palsu: tidak mengenal mode apa pun selain jatuh ke "Prompt kosong.".
+  if (req.method === "POST" && url.pathname === "/exec-lama") {
+    return readBody(() => { res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify({ error: "Prompt kosong." })); });
+  }
   if (req.method === "POST" && url.pathname === "/exec") {
     return readBody(body => {
+      // Meniru backend Apps Script LAMA yang belum punya route "eksperimen_data_save":
+      // mode tak dikenal jatuh ke handler Gemini dan menjawab "Prompt kosong.".
+      let m = ""; try { m = JSON.parse(body).mode; } catch (e) { /* abaikan */ }
+      if (mockCfg.staleEks && m === "eksperimen_data_save") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ error: "Prompt kosong." }));
+      }
+      if (mockCfg.gateSubmitError && m === "gate_submit") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ error: "Server sedang sibuk, coba kirim lagi sebentar lagi." }));
+      }
       const out = backend.doPost({ postData: { contents: body } });
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(out.text);
