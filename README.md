@@ -121,9 +121,9 @@ Guru bisa membagikan **Kode Eksplorasi Bebas** (`TEACHER_UNLOCK_CODE` di `js/con
 
 **Panel Guru (`teacher.html`) - sesi kelas real-time.** Buka `teacher.html` di situs kamu (mis. `https://<username>.github.io/v4/teacher.html`). Login pakai `TEACHER_CONTROL_CODE` yang didefinisikan di `apps-script/Code.gs` (**wajib diganti dari nilai default**, lalu redeploy) - kode ini tersimpan di server, tidak pernah terlihat siswa lewat "View Source" situs, beda dari `TEACHER_UNLOCK_CODE` yang memang publik. Dari panel ini guru bisa:
 - Memulai sesi kelas: pilih topik + tab yang wajib dikerjakan semua siswa sekarang, dapat kode sesi acak untuk dibagikan (tulis di papan tulis).
-- Siswa gabung lewat tombol Pengaturan di situs utama (bagian "Sesi Kelas"), masukkan kode itu. Begitu gabung, mereka otomatis diarahkan ke aktivitas yang ditentukan, dan **tidak bisa membuka topik/tab lain** selama sesi aktif (mengalahkan Kode Eksplorasi Bebas juga) - supaya satu kelas benar-benar mengerjakan hal yang sama secara bersamaan.
+- Siswa boleh gabung (OPSIONAL) lewat langkah "Kode sesi dari guru" di gerbang awal atau lewat Pengaturan -> "Sesi Kelas". Sejak 2026-09-24 sesi kelas bersifat MENGARAHKAN, bukan MENGUNCI: siswa diantar otomatis ke aktivitas guru sekali saat baru masuk, tab yang ditentukan guru ikut terbuka untuk topik itu, tetapi siswa tetap bebas membuka topik lain dan tetap bisa maju sendiri (mis. Materi -> Eksperimen dengan skor kuis >= 80%). Kalau guru mengganti aktivitas, siswa hanya mendapat notifikasi + tombol "Ke sana sekarang", tidak diseret paksa. Siswa tanpa kode bisa memilih "Lewati, belajar mandiri".
 - Mengganti aktivitas kapan saja (mis. pindah dari Materi ke Eksperimen) - semua siswa yang gabung otomatis ikut pindah dalam ~12 detik (polling, bukan push notification sungguhan) tanpa perlu join ulang.
-- Memantau roster siswa (ID anonim, bukan nama - mis. "Siswa-A3F9", digenerate otomatis per perangkat) beserta aktivitas & waktu lapor terakhirnya, diperbarui otomatis tiap ~8 detik.
+- Memantau roster siswa (nama + kelas yang diisi siswa) beserta aktivitas, TINGKAT BELAJAR (dasar/menengah/lanjut), dan waktu lapor terakhirnya, diperbarui otomatis tiap ~8 detik.
 - Mengakhiri sesi - semua siswa otomatis kembali ke mode belajar mandiri (navigasi bertahap per topik seperti biasa).
 - **Konfirmasi Menunggu** (kartu baru): daftar semua siswa yang sudah menjawab benar pertanyaan konfirmasi Eksperimen atau mengirim refleksi Lab Simulasi, lengkap dengan ringkasan/refleksinya, menunggu tombol **Setujui**/**Tolak** dari guru. Diperbarui otomatis bersamaan dengan roster (~8 detik). Menolak akan menampilkan prompt catatan opsional untuk siswa (mis. bagian yang perlu diperbaiki).
 
@@ -137,6 +137,21 @@ Catatan: fitur ini pakai `PropertiesService` bawaan Apps Script sebagai penyimpa
 - **Akhiri Kuis**: menghentikan penerimaan jawaban baru tanpa menghapus hasil yang sudah masuk (hasil tetap bisa dilihat sampai kuis berikutnya dipublikasikan).
 
 ---
+
+## Pembelajaran berdiferensiasi (Differentiated Learning)
+
+Tiap siswa punya tingkat belajar: Dasar (penguatan), Menengah (inti), atau Lanjut (pengayaan). Batas lulus kuis Materi tetap 80% untuk semua tingkat; yang berbeda adalah dukungan dan tantangannya.
+
+- Penentuan tingkat (otomatis, per topik): dari percobaan PERTAMA kuis pemahaman Materi dan jumlah percobaan sampai lulus. Skor pertama 100% -> Lanjut; 80% -> Menengah; 60% -> Menengah bila lulus dalam <= 2 percobaan, selain itu Dasar; <= 40% -> Dasar. Topik yang belum dinilai memakai tingkat topik terakhir yang dinilai, atau Menengah untuk siswa baru. Siswa bisa menimpa manual lewat pilihan "Tingkat belajarmu" di atas topik ("Otomatis" untuk kembali). Aturannya ada di levelFromMateriScore() di js/app.js.
+- Materi & Latihan Soal: panduan bertahap + lembar rumus terbuka (Dasar), referensi cepat (Menengah), atau tantangan pengayaan + tombol "Minta Tutor" (Lanjut). Lembar rumus diambil dari topic.formulaSheet.
+- Latihan Tambahan (AI): tombol di bawah Latihan Soal membuat 3 soal baru sesuai tingkat lewat mode quiz_generate memakai API key siswa (Dasar: satu langkah dengan scaffold; Lanjut: multi-langkah bergaya ujian). Pilihan ganda bisa dicek langsung; pembahasan dari AI sehingga diberi catatan.
+- Tutor Fisika: tingkat dikirim ke backend dan mengubah gaya tutor (lihat levelInstruction() di apps-script/Code.gs).
+- Lab Simulasi: bawaan "Tingkat kompleksitas" mengikuti tingkat, plus arahan tambahan di prompt (Dasar: panel "Apa yang harus diamati"; Lanjut: tugas "Prediksi dulu", tabel data, soal tantangan).
+- Guru: tingkat tampil di roster Panel Guru dan sebagai awalan "[Tingkat]" pada ringkasan konfirmasi Eksperimen/Lab.
+
+## Tes otomatis
+
+Folder tests/ berisi server uji lokal yang menjalankan Code.gs ASLI dengan layanan Google/Gemini palsu (tidak menyentuh Apps Script, spreadsheet, atau kuota Gemini sungguhan) dan 21 tes Playwright. Setiap tes mereset state server (sesi aktif), membuka browser baru, lalu login sebagai siswa lewat layar gerbang. Jalankan: `node tests/mock-backend.js 8787 &` lalu `NODE_PATH=$(npm root -g) node tests/e2e.js`.
 
 ## 5. Menambah topik baru
 

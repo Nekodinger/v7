@@ -106,6 +106,7 @@
         <button type="button" id="gate-student-code-btn" class="btn btn-primary" data-i18n="action.join">Gabung</button>
       </div>
       <p class="onboarding-status" id="gate-student-code-status"></p>
+      <button type="button" id="gate-student-code-skip-btn" class="btn btn-secondary" data-i18n="gate.student.code.skip">Lewati, belajar mandiri</button>
       <p class="gate-back-row"><button type="button" id="gate-student-code-back-btn" class="link-btn" data-i18n="gate.student.code.back">Ubah nama/kelas</button></p>
     </div>
 
@@ -180,6 +181,14 @@
         <span id="topic-badge" class="badge"></span>
         <h2 id="topic-title"></h2>
         <p id="topic-desc"></p>
+      </div>
+
+      <div class="ability-bar" id="ability-bar" hidden>
+        <span class="ability-label" data-i18n="ability.label">Tingkat belajarmu:</span>
+        <span class="ability-chip" id="ability-chip"></span>
+        <span class="muted small" id="ability-source"></span>
+        <select id="ability-select" class="ability-select" data-i18n-aria="ability.select.aria" aria-label="Ubah tingkat belajar"></select>
+        <p class="muted small ability-desc" id="ability-desc"></p>
       </div>
 
       <div class="tabs" role="tablist">
