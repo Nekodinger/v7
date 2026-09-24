@@ -6,11 +6,7 @@ const STORAGE_KEY_BACKEND = "physicsSandbox.backendUrl";
 const STORAGE_KEY_GEMINI = "physicsSandbox.geminiApiKey";
 const STORAGE_KEY_PROGRESS = "physicsSandbox.progress";
 const STORAGE_KEY_UNLOCK_ALL = "physicsSandbox.unlockAll";
-// Cara belajar: "class" (belajar di kelas, kode sesi dari guru) | "self" (belajar
-// mandiri, kode belajar mandiri). Nilai lama "student"/"guest" dinormalkan di getUserRole().
-const STORAGE_KEY_ROLE = "physicsSandbox.userRole";
-// Penanda kode belajar mandiri sudah benar di perangkat ini.
-const STORAGE_KEY_SELF_CODE_OK = "physicsSandbox.selfCodeOk";
+const STORAGE_KEY_ROLE = "physicsSandbox.userRole"; // "student" | "guest"
 const STORAGE_KEY_STUDENT_NAME = "physicsSandbox.studentName";
 const STORAGE_KEY_STUDENT_CLASS = "physicsSandbox.studentClass";
 // Menandai topik mana yang tabel data Eksperimen-nya SUDAH pernah disimpan
@@ -18,11 +14,12 @@ const STORAGE_KEY_STUDENT_CLASS = "physicsSandbox.studentClass";
 // untuk mewajibkan siswa mengisi & menyimpan tabel dulu sebelum tombol
 // "Lanjut ke Latihan Soal" boleh membuka pertanyaan konfirmasi Eksperimen.
 const STORAGE_KEY_EKSDATA_SAVED = "physicsSandbox.eksperimenDataSaved";
-const STORAGE_KEY_EKSDATA_LOCAL = "physicsSandbox.eksperimenDataLocal";
-// Penanda bahwa kode sesi guru sudah pernah diterima di perangkat ini (siswa yang
-// belajar di kelas), supaya gerbang tidak meminta kode lagi bila sesi guru
-// berakhir. Nama kunci baru: penanda lama "lewati" tidak boleh meloloskan siapa pun.
-const STORAGE_KEY_SESSION_STEP_DONE = "physicsSandbox.classCodeOk";
+// Praktikum Virtual (tab Lab, tanpa alat) - lihat renderVirtualLabHTML() dkk
+// di bawah. Sengaja HANYA localStorage (tidak pernah di-POST ke backend
+// mana pun) supaya fitur ini tidak butuh perubahan apa pun pada
+// apps-script/Code.gs ataupun DEFAULT_BACKEND_URL.
+const STORAGE_KEY_VLAB_TRUEB = "physicsSandbox.virtualLabTrueB";
+const STORAGE_KEY_VLAB_DATA = "physicsSandbox.virtualLabData";
 let currentTopic = null;
 let lastGeneratedHTML = "";
 let editCount = 0;
@@ -95,27 +92,18 @@ function getUnlockedTabIndex(topicId) {
   const progress = getProgress();
   return progress[topicId] !== undefined ? progress[topicId] : 0;
 }
-// Sesi kelas dari guru sekarang bersifat MENGARAHKAN, bukan MENGUNCI (diubah
-// 2026-09-24 atas permintaan guru: siswa harus bisa belajar mandiri dan lanjut
-// dari Materi ke Eksperimen begitu skor kuis pemahaman >= 80%, tanpa menunggu
-// guru dan tanpa terikat aktivitas sesi). Aktivitas yang ditentukan guru
-// hanya MENAMBAH tab yang terbuka untuk topik itu (guru bisa "membukakan"
-// satu tab untuk seluruh kelas); tidak pernah menutup tab/topik lain dan
-// tidak mengurangi kemajuan pribadi siswa.
-function getSessionTabIndexFor(topicId) {
-  if (isInClassSession() && classSession.topicId === topicId && typeof classSession.tabIndex === "number") {
-    return classSession.tabIndex;
-  }
-  return -1;
-}
-function getEffectiveUnlockedTabIndex(topicId) {
-  if (isUnlockAll()) return TAB_ORDER.length - 1;
-  return Math.max(getUnlockedTabIndex(topicId), getSessionTabIndexFor(topicId));
-}
 function isTabLocked(topicId, tabName) {
   const topic = TOPICS.find(tp => tp.id === topicId);
   if (!topic || topic.status !== "ready") return false;
-  return TAB_ORDER.indexOf(tabName) > getEffectiveUnlockedTabIndex(topicId);
+  // Sesi kelas aktif (dari guru) mengalahkan semua gembok lain (termasuk
+  // Kode Eksplorasi Bebas) - selama tergabung, HANYA tab yang sedang
+  // ditentukan guru untuk topik ini yang boleh dibuka.
+  if (isInClassSession()) {
+    if (topicId !== classSession.topicId) return true;
+    return TAB_ORDER.indexOf(tabName) !== classSession.tabIndex;
+  }
+  const unlocked = getUnlockedTabIndex(topicId);
+  return TAB_ORDER.indexOf(tabName) > unlocked;
 }
 function advanceProgress(topicId, tabIndexReached) {
   const progress = getProgress();
@@ -128,91 +116,6 @@ function nextReadyTopicId(topicId) {
   const idx = order.indexOf(topicId);
   if (idx < 0 || idx >= order.length - 1) return null;
   return order[idx + 1];
-}
-
-/* ============================================================
-   Differentiated learning (pembelajaran berdiferensiasi)
-   ------------------------------------------------------------
-   Ditambahkan 2026-09-24: siswa dalam satu kelas punya kesiapan
-   berbeda, jadi platform menyesuaikan dukungan & tantangan menurut
-   TINGKAT BELAJAR siswa: "dasar" (penguatan), "menengah" (inti),
-   "lanjut" (pengayaan). Batas skor lulus TETAP 80% untuk semua
-   tingkat (mastery yang sama), yang berbeda adalah JALAN menuju
-   ke sana dan tantangan sesudahnya.
-
-   Cara menentukan tingkat (deterministik, bisa dijelaskan):
-   - Bukti utama = hasil PERCOBAAN PERTAMA kuis pemahaman Materi
-     (5 soal) dan banyaknya percobaan sampai lulus:
-       firstPct = 100                        -> lanjut
-       firstPct = 80                         -> menengah (lulus langsung)
-       firstPct = 60 dan percobaan <= 2      -> menengah
-       firstPct = 60 dan percobaan >= 3      -> dasar
-       firstPct <= 40                        -> dasar
-   - Topik yang belum dinilai memakai tingkat topik terakhir yang
-     sudah dinilai (carry-over), atau "menengah" untuk siswa baru.
-   - Siswa boleh menimpa manual lewat pilihan di atas topik
-     (mis. merasa perlu lebih banyak dukungan); "Otomatis" mengembalikan.
-   Tingkat memengaruhi: panduan di Materi & Latihan, latihan tambahan
-   AI (soal sesuai tingkat), gaya Tutor Fisika, bawaan kompleksitas &
-   arahan di Generator Simulasi, dan ditampilkan ke guru di roster.
-   ============================================================ */
-const STORAGE_KEY_ABILITY = "physicsSandbox.ability";
-const ABILITY_LEVELS = ["dasar", "menengah", "lanjut"];
-const DEFAULT_LEVEL = "menengah";
-const EXTRA_PRACTICE_COUNT = 3;
-let extraQuestions = []; // soal latihan tambahan (AI) yang sedang tampil
-
-function getAbilityState() {
-  try {
-    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY_ABILITY) || "{}") || {};
-    return {
-      manual: ABILITY_LEVELS.includes(raw.manual) ? raw.manual : null,
-      topics: (raw.topics && typeof raw.topics === "object") ? raw.topics : {}
-    };
-  } catch (e) { return { manual: null, topics: {} }; }
-}
-function saveAbilityState(st) {
-  try { localStorage.setItem(STORAGE_KEY_ABILITY, JSON.stringify(st)); } catch (e) { /* abaikan */ }
-}
-function levelFromMateriScore(firstPct, attempts) {
-  if (firstPct >= 100) return "lanjut";
-  if (firstPct >= 80) return "menengah";
-  if (firstPct >= 60) return attempts <= 2 ? "menengah" : "dasar";
-  return "dasar";
-}
-// Dicatat setiap kali siswa MENGIRIM kuis Materi dengan semua soal terjawab.
-function recordMateriAttempt(topicId, pct, passed) {
-  if (!topicId) return;
-  const st = getAbilityState();
-  const rec = st.topics[topicId] || { attempts: 0, firstPct: null, level: null, passed: false, at: 0 };
-  if (rec.passed) return; // sudah lulus: nilai awal tidak diubah lagi
-  rec.attempts += 1;
-  if (rec.firstPct === null) rec.firstPct = pct;
-  rec.level = levelFromMateriScore(rec.firstPct, rec.attempts);
-  rec.passed = !!passed;
-  rec.at = Date.now();
-  st.topics[topicId] = rec;
-  saveAbilityState(st);
-}
-function getStudentLevel(topicId) {
-  const st = getAbilityState();
-  if (st.manual) return st.manual;
-  const rec = topicId && st.topics[topicId];
-  if (rec && ABILITY_LEVELS.includes(rec.level)) return rec.level;
-  let latest = null;
-  Object.keys(st.topics).forEach(id => {
-    const r = st.topics[id];
-    if (r && ABILITY_LEVELS.includes(r.level) && (!latest || (r.at || 0) > (latest.at || 0))) latest = r;
-  });
-  return latest ? latest.level : DEFAULT_LEVEL;
-}
-function setManualLevel(levelOrNull) {
-  const st = getAbilityState();
-  st.manual = ABILITY_LEVELS.includes(levelOrNull) ? levelOrNull : null;
-  saveAbilityState(st);
-}
-function currentLevel() {
-  return getStudentLevel(currentTopic ? currentTopic.id : null);
 }
 
 /* ============================================================
@@ -353,7 +256,6 @@ function openConfirmModal(opts) {
       }
       const total = opts.questions.length;
       const scorePct = Math.round((correctCount / total) * 100);
-      if (typeof opts.onScore === "function") opts.onScore(scorePct, scorePct >= threshold);
       if (scorePct >= threshold) {
         if (opts.showScoreOnPass) showToast(t("confirm.scorepass", { score: scorePct }));
         el.hidden = true;
@@ -389,12 +291,6 @@ function startMateriGate(onPass) {
     fallbackLabel: t("gate.materi.fallback"),
     passThreshold: PASS_THRESHOLD_MATERI,
     showScoreOnPass: true,
-    // Hasil percobaan dipakai menentukan tingkat belajar (differentiated learning).
-    onScore: (pct, passed) => {
-      if (!currentTopic) return;
-      recordMateriAttempt(currentTopic.id, pct, passed);
-      onLevelChanged();
-    },
     onPass
   });
 }
@@ -405,7 +301,7 @@ function startEksperimenGate() {
     questions: currentTopic.eksperimenCheck || null,
     fallbackLabel: t("gate.eksperimen.fallback"),
     submitLabel: t("gate.eksperimen.submitbtn"),
-    onPass: () => submitGateForApproval("eksperimen", t("gate.eksperimen.autosummary") + lkpdSummaryText())
+    onPass: () => submitGateForApproval("eksperimen", t("gate.eksperimen.autosummary"))
   });
 }
 function startLabReflectionGate() {
@@ -423,29 +319,16 @@ async function submitGateForApproval(stage, summary) {
   if (!currentTopic) return;
   const topicId = currentTopic.id;
   const studentId = getStudentId();
-  // Awali ringkasan dengan tingkat belajar siswa supaya guru langsung tahu
-  // konteksnya saat menyetujui/menolak (differentiated learning).
-  summary = "[" + t("level." + getStudentLevel(topicId)) + "] " + (summary || "");
   setGateCacheEntry(topicId, stage, { status: "pending", submittedAt: Date.now() });
   renderGateBanner(stage);
   showToast(t("gate.submitted.toast"));
   const backendUrl = getBackendUrl();
   if (backendUrl) {
     try {
-      const resp = await fetch(backendUrl, {
+      await fetch(backendUrl, {
         method: "POST", headers: { "Content-Type": "text/plain" },
         body: JSON.stringify({ mode: "gate_submit", topicId, studentId, stage, summary: summary || "" })
       });
-      let data = null;
-      try { data = await resp.json(); } catch (e) { data = null; }
-      // Server menjawab error (mis. backend lama yang belum mengenal mode ini):
-      // batalkan status "menunggu" palsu supaya siswa bisa mengirim ulang.
-      if (data && data.error) {
-        setGateCacheEntry(topicId, stage, null);
-        renderGateBanner(stage);
-        showToast(t("gate.submit.failed", { error: String(data.error) }));
-        return;
-      }
     } catch (e) { /* akan tersinkron lagi lewat polling di bawah */ }
   }
   startGatePolling(topicId, stage);
@@ -522,7 +405,7 @@ function renderGateBanner(stage) {
     el.innerHTML = `<span class="gate-banner-icon">&#10003;</span> ${t("gate.banner.approved." + stage)}`;
   } else if (cached.status === "rejected") {
     el.className = "gate-banner gate-rejected";
-    const note = cached.note ? `<br><em>${t("gate.banner.notefromteacher")}: ${escapeHtmlQ(cached.note)}</em>` : "";
+    const note = cached.note ? `<br><em>${t("gate.banner.notefromteacher")}: ${escapeAttr(cached.note)}</em>` : "";
     const retryId = stage + "-gate-retry-btn";
     el.innerHTML = `<span class="gate-banner-icon">&#10007;</span> ${t("gate.banner.rejected." + stage)}${note}` +
       `<br><button type="button" class="btn btn-secondary btn-small gate-retry-btn" id="${retryId}">${t("gate.banner.retrybtn")}</button>`;
@@ -603,10 +486,7 @@ let classSyncTimer = null;
 let lastClassActivityKey = null; // untuk deteksi kapan guru GANTI aktivitas
 
 function getUserRole() {
-  const raw = localStorage.getItem(STORAGE_KEY_ROLE) || "";
-  if (raw === "student") return "class";
-  if (raw === "guest") return "self";
-  return (raw === "class" || raw === "self") ? raw : "";
+  return localStorage.getItem(STORAGE_KEY_ROLE) || "";
 }
 function getStudentName() {
   return (localStorage.getItem(STORAGE_KEY_STUDENT_NAME) || "").trim();
@@ -643,9 +523,6 @@ function isInClassSession() {
 }
 function leaveClassSession(message) {
   localStorage.removeItem(STORAGE_KEY_CLASS_CODE);
-  // Keluar/berakhirnya sesi TIDAK boleh melempar siswa kembali ke gerbang:
-  // sesi bersifat opsional, siswa lanjut belajar mandiri.
-  localStorage.setItem(STORAGE_KEY_SESSION_STEP_DONE, "1");
   classSession = null;
   lastClassActivityKey = null;
   stopClassSync();
@@ -658,9 +535,10 @@ function leaveClassSession(message) {
   updateClassSessionBanner();
   updateQuizUI(null);
   if (message) showToast(message);
-  // (Dulu di sini siswa dipaksa kembali ke gerbang minta kode baru. Sekarang
-  // sesi opsional, jadi cukup kembali ke mode belajar mandiri. applyGate tetap
-  // dipanggil supaya kasus lain - mis. API key dihapus - tetap ditangani.)
+  // Kalau perannya siswa, situs WAJIB kembali terkunci di gate (minta kode
+  // baru) begitu sesi berakhir/tidak valid lagi - bukan cuma kembali ke mode
+  // belajar mandiri seperti sebelumnya. Peran "bukan siswa" tidak terpengaruh
+  // (aksesnya tetap lewat Kode Eksplorasi Bebas, tidak terkait sesi kelas).
   if (typeof applyGate === "function") applyGate();
 }
 // Mencoba gabung/menyambung ulang ke sebuah kode sesi kelas lewat backend.
@@ -675,7 +553,7 @@ async function attemptJoinClassSession(code) {
     const resp = await fetch(backendUrl, {
       method: "POST",
       headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ mode: "session_sync", code: trimmed, studentId: getStudentId(), topicId: null, tabIndex: null, level: getStudentLevel(null) })
+      body: JSON.stringify({ mode: "session_sync", code: trimmed, studentId: getStudentId(), topicId: null, tabIndex: null })
     });
     const data = await resp.json();
     if (data.error) return { ok: false, error: data.error };
@@ -684,7 +562,6 @@ async function attemptJoinClassSession(code) {
       return { ok: false, error: t("classsession.wrongcode") };
     }
     localStorage.setItem(STORAGE_KEY_CLASS_CODE, trimmed);
-    localStorage.setItem(STORAGE_KEY_SESSION_STEP_DONE, "1");
     classSession = data;
     lastClassActivityKey = data.topicId + "|" + data.tabIndex;
     startClassSync();
@@ -716,8 +593,7 @@ async function syncClassSession() {
         code: code,
         studentId: getStudentId(),
         topicId: currentTopic ? currentTopic.id : null,
-        tabIndex: activeTabName ? TAB_ORDER.indexOf(activeTabName) : null,
-        level: currentLevel()
+        tabIndex: activeTabName ? TAB_ORDER.indexOf(activeTabName) : null
       })
     });
     const data = await resp.json();
@@ -736,10 +612,9 @@ async function syncClassSession() {
       const tabName = document.querySelector(".tab-btn.active")?.dataset.tab;
       if (tabName) updateTopicProgressUI(tabName);
     }
-    // Guru mengganti aktivitas -> JANGAN menyeret siswa yang sedang belajar
-    // mandiri; cukup beri tahu (banner "Ke sana sekarang" sudah tampil di atas).
-    // Siswa hanya diantar otomatis SEKALI, saat baru lolos gerbang (applyGate).
-    if (changed && data.topicId) showToast(t("classsession.activitychanged"));
+    // Baru gabung, atau guru baru saja ganti aktivitas -> langsung antar
+    // siswa ke sana supaya semua benar-benar mulai bersamaan.
+    if (changed) goToClassSessionActivity();
   } catch (err) {
     // Gagal konek sesekali (jaringan) bukan hal fatal - coba lagi di
     // polling berikutnya, jangan spam toast tiap 12 detik.
@@ -1007,8 +882,9 @@ function renderNav() {
 
     levelTopics.forEach(topic => {
       const btn = document.createElement("button");
+      const blocked = isInClassSession() && topic.id !== classSession.topicId;
       const isSessionFocus = isInClassSession() && topic.id === classSession.topicId;
-      btn.className = "nav-item" + (isSessionFocus ? " session-active" : "");
+      btn.className = "nav-item" + (blocked ? " session-locked" : "") + (isSessionFocus ? " session-active" : "");
       btn.dataset.id = topic.id;
       btn.innerHTML =
         `<span class="dot ${topic.status === 'ready' ? 'dot-ready' : 'dot-soon'}"></span>` +
@@ -1025,6 +901,10 @@ function renderNav() {
 }
 
 function selectTopic(id) {
+  if (isInClassSession() && id !== classSession.topicId) {
+    showToast(t("toast.classlocked"));
+    return;
+  }
   currentTopic = TOPICS.find(tp => tp.id === id);
   if (!currentTopic) return;
 
@@ -1048,9 +928,6 @@ function selectTopic(id) {
   renderEksperimen();
   renderLatihan();
   setupLabForTopic();
-  refreshAbilityBar();
-  renderMateriDifferentiation();
-  renderLatihanDifferentiation();
   if (currentTopic.status === "ready") checkGateOnTopicOpen(currentTopic.id);
 
   if (window.Chatbot) Chatbot.setTopic(currentTopic.id);
@@ -1141,7 +1018,7 @@ function updateTopicProgressUI(activeTab) {
     return;
   }
 
-  const unlocked = getEffectiveUnlockedTabIndex(currentTopic.id);
+  const unlocked = isUnlockAll() ? TAB_ORDER.length - 1 : getUnlockedTabIndex(currentTopic.id);
   const activeIdx = TAB_ORDER.indexOf(activeTab);
   document.querySelectorAll(".tab-btn").forEach(b => {
     b.classList.toggle("locked", isTabLocked(currentTopic.id, b.dataset.tab));
@@ -1211,7 +1088,7 @@ document.getElementById("progress-next-btn").addEventListener("click", () => {
     // menyimpannya minimal sekali dulu sebelum pertanyaan konfirmasi
     // Eksperimen boleh dibuka - lihat wireEksperimenDataTable().
     const needsData = currentTopic.eksperimen && currentTopic.eksperimen.dataTable;
-    if (needsData && !getEksperimenDataReadyFlag(currentTopic.id)) {
+    if (needsData && !getEksperimenDataSavedFlag(currentTopic.id)) {
       showToast(t("toast.eksdata.required"));
       return;
     }
@@ -1233,7 +1110,7 @@ document.getElementById("progress-finish-btn").addEventListener("click", () => {
 function renderMateri() {
   const panel = document.getElementById("panel-materi");
   if (currentTopic.status === "ready" && currentTopic.materiHTML) {
-    panel.innerHTML = pjblStageHTML("materi") + `<div id="materi-diff"></div>` + trContent(currentTopic.materiHTML);
+    panel.innerHTML = pjblStageHTML("materi") + trContent(currentTopic.materiHTML);
   } else {
     panel.innerHTML = comingSoonHTML("materi");
   }
@@ -1247,25 +1124,13 @@ function renderEksperimen() {
   const panel = document.getElementById("panel-eksperimen");
   if (currentTopic.status === "ready" && currentTopic.eksperimen) {
     const ex = currentTopic.eksperimen;
-    if (ex.lkpd) {
-      // LKPD interaktif (mirip LiveWorksheet) + pilihan Praktikum Sederhana / Lab.
-      lkpdCtx = null;
-      panel.innerHTML = pjblStageHTML("eksperimen") +
-        `<div id="eksperimen-gate-banner" class="gate-banner" hidden></div>` +
-        `<h3>${trContent(ex.title)}</h3>${trContent(ex.intro)}` +
-        renderLkpdHTML(currentTopic, ex);
-      renderGateBanner("eksperimen");
-      wireLkpd(panel, currentTopic, ex);
-    } else {
-      panel.innerHTML = pjblStageHTML("eksperimen") +
-        `<div id="eksperimen-gate-banner" class="gate-banner" hidden></div>` +
-        `<h3>${trContent(ex.title)}</h3>${trContent(ex.intro)}` +
-        (ex.simHTML ? `<div class="sim-embed"><iframe sandbox="allow-scripts" srcdoc="${escapeAttr(ex.simHTML)}"></iframe></div>` : "") +
-        (ex.dataTable ? renderEksperimenDataTableHTML(ex.dataTable) : "");
-      renderGateBanner("eksperimen");
-      if (ex.dataTable) wireEksperimenDataTable(ex.dataTable);
-      makeStaticTablesFillable(panel);
-    }
+    panel.innerHTML = pjblStageHTML("eksperimen") +
+      `<div id="eksperimen-gate-banner" class="gate-banner" hidden></div>` +
+      `<h3>${trContent(ex.title)}</h3>${trContent(ex.intro)}` +
+      (ex.simHTML ? `<div class="sim-embed"><iframe sandbox="allow-scripts" srcdoc="${escapeAttr(ex.simHTML)}"></iframe></div>` : "") +
+      (ex.dataTable ? renderEksperimenDataTableHTML(ex.dataTable) : "");
+    renderGateBanner("eksperimen");
+    if (ex.dataTable) wireEksperimenDataTable(ex.dataTable);
   } else {
     panel.innerHTML = comingSoonHTML("eksperimen");
   }
@@ -1284,22 +1149,13 @@ function renderEksperimen() {
 // lokal tepat di bawah tombol (bukan ke #generate-status yang jauh),
 // mengikuti pola status-lokal yang sudah dipakai "Edit Simulasi Ini" di
 // tab Lab supaya pesannya tidak pernah terlewat siswa.
-function renderEksperimenDataTableHTML(dt, saved, opts) {
-  opts = opts || {};
-  saved = saved || {};
-  const editable = !!dt.independentEditable;
-  const nRows = editable ? (dt.rowCount || 5) : dt.independentValues.length;
-  const rowsHTML = Array.from({ length: nRows }, (_, ri) => {
-    const savedInd = (editable && saved.ind && saved.ind[ri] !== undefined) ? saved.ind[ri] : "";
-    const indCell = editable
-      ? `<td class="eks-dt-i"><input type="number" step="any" min="0" class="eks-dt-ind" data-row="${ri}" value="${escapeAttr(String(savedInd))}" aria-label="${escapeAttr(dt.independentLabel)}"></td>`
-      : `<td class="eks-dt-i">${String(dt.independentValues[ri]).replace(".", ",")}</td>`;
-    const repCells = Array.from({ length: dt.replicateCount }, (_, ci) => {
-      const sv = (saved.vals && saved.vals[ri] && saved.vals[ri][ci] !== undefined) ? saved.vals[ri][ci] : "";
-      return `<td><input type="number" step="any" class="eks-dt-input" data-row="${ri}" data-col="${ci}" value="${escapeAttr(String(sv))}" aria-label="${escapeAttr(dt.replicateLabel)} #${ci + 1}"></td>`;
-    }).join("");
-    return `<tr data-row="${ri}"${editable ? "" : ` data-i="${dt.independentValues[ri]}"`}>` +
-      indCell +
+function renderEksperimenDataTableHTML(dt) {
+  const rowsHTML = dt.independentValues.map((iVal, ri) => {
+    const repCells = Array.from({ length: dt.replicateCount }, (_, ci) =>
+      `<td><input type="number" step="any" class="eks-dt-input" data-row="${ri}" data-col="${ci}" aria-label="${dt.replicateLabel} #${ci + 1}"></td>`
+    ).join("");
+    return `<tr data-row="${ri}" data-i="${iVal}">` +
+      `<td class="eks-dt-i">${String(iVal).replace(".", ",")}</td>` +
       repCells +
       `<td class="eks-dt-avg" data-row="${ri}">-</td>` +
       `<td class="eks-dt-f" data-row="${ri}">-</td>` +
@@ -1308,31 +1164,27 @@ function renderEksperimenDataTableHTML(dt, saved, opts) {
   const repHeaders = Array.from({ length: dt.replicateCount }, (_, ci) =>
     `<th>${dt.replicateLabel}<sub>${ci + 1}</sub></th>`
   ).join("");
-  // Dalam LKPD interaktif, judul & petunjuk bagian sudah disediakan LKPD (opts.bare).
-  const head = opts.bare ? "" : `<h4>${t("eksdata.title")}</h4><p class="muted">${t("eksdata.desc")}</p>`;
   return `
     <div class="eks-datatable-section">
-      ${head}
-      <div class="eks-dt-scroll"><table class="eks-datatable">
-        <thead><tr><th>${dt.independentLabel}</th>${repHeaders}<th>${dt.replicateLabel} ${t("eksdata.avgsuffix")}</th><th>${dt.derivedLabel}</th></tr></thead>
+      <h4>${t("eksdata.title")}</h4>
+      <p class="muted">${t("eksdata.desc")}</p>
+      <table class="eks-datatable">
+        <thead><tr><th>${dt.independentLabel}</th>${repHeaders}<th>${dt.replicateLabel} rata-rata</th><th>${dt.derivedLabel}</th></tr></thead>
         <tbody>${rowsHTML}</tbody>
-      </table></div>
+      </table>
       <button type="button" id="eks-dt-save-btn" class="btn btn-primary btn-small">${t("eksdata.savebtn")}</button>
       <p id="eks-dt-status" class="eks-dt-status"></p>
     </div>`;
 }
-function recalcEksperimenRow(tr, dt) {
+function recalcEksperimenRow(tr, replicateCount) {
+  const row = tr.dataset.row;
   const inputs = tr.querySelectorAll(".eks-dt-input");
   const nums = Array.from(inputs).map(i => parseFloat(i.value)).filter(n => !isNaN(n));
   const avgCell = tr.querySelector(".eks-dt-avg");
   const fCell = tr.querySelector(".eks-dt-f");
   if (nums.length) {
     const avg = nums.reduce((a, b) => a + b, 0) / nums.length;
-    // Faktor kolom turunan didefinisikan per topik di dataTable.derivedFactor
-    // (mis. Current Balance: F = avg/1000 x 9,81 -> 0,00981). Kalau tidak
-    // didefinisikan, kolom turunan = rata-rata apa adanya.
-    const factor = (dt && typeof dt.derivedFactor === "number") ? dt.derivedFactor : 1;
-    const F = avg * factor;
+    const F = (avg / 1000) * 9.81;
     avgCell.textContent = avg.toFixed(3);
     fCell.textContent = F.toFixed(4);
   } else {
@@ -1340,57 +1192,27 @@ function recalcEksperimenRow(tr, dt) {
     fCell.textContent = "-";
   }
 }
-// Membaca isi tabel dari DOM: [{ I: angka|null, values: ["...", ...] }].
-// I = nilai tetap (data-i) atau isian siswa bila kolom pertama bisa diisi
-// (dt.independentEditable, mis. arus yang diukur siswa dengan multimeter).
-function readEksperimenTable(table, dt) {
-  const editable = !!(dt && dt.independentEditable);
-  return Array.from(table.querySelectorAll("tbody tr")).map(tr => {
-    const values = Array.from(tr.querySelectorAll(".eks-dt-input")).map(i => i.value.trim());
-    let I;
-    if (editable) {
-      const v = parseFloat(tr.querySelector(".eks-dt-ind").value);
-      I = isNaN(v) ? null : v;
-    } else {
-      I = parseFloat(tr.dataset.i);
-    }
-    return { I, values };
-  });
-}
-function wireEksperimenDataTable(dt, opts) {
-  opts = opts || {};
+function wireEksperimenDataTable(dt) {
   const panel = document.getElementById("panel-eksperimen");
   const table = panel.querySelector(".eks-datatable");
   const saveBtn = document.getElementById("eks-dt-save-btn");
   const statusEl = document.getElementById("eks-dt-status");
   if (!table || !saveBtn) return;
-  const editable = !!dt.independentEditable;
-
-  // Hitung ulang baris yang sudah terisi (nilai tersimpan dipulihkan saat render)
-  table.querySelectorAll("tbody tr").forEach(tr => recalcEksperimenRow(tr, dt));
-  const tableState = () => ({
-    ind: Array.from(table.querySelectorAll(".eks-dt-ind")).map(i => i.value),
-    vals: Array.from(table.querySelectorAll("tbody tr")).map(tr => Array.from(tr.querySelectorAll(".eks-dt-input")).map(i => i.value))
-  });
 
   table.addEventListener("input", (e) => {
-    const cl = e.target.classList;
-    if (!cl.contains("eks-dt-input") && !cl.contains("eks-dt-ind")) return;
-    recalcEksperimenRow(e.target.closest("tr"), dt);
-    if (opts.onChange) opts.onChange(tableState());
+    if (!e.target.classList.contains("eks-dt-input")) return;
+    recalcEksperimenRow(e.target.closest("tr"), dt.replicateCount);
   });
 
   saveBtn.addEventListener("click", async () => {
-    const rows = readEksperimenTable(table, dt);
+    const rows = Array.from(table.querySelectorAll("tbody tr")).map(tr => {
+      const values = Array.from(tr.querySelectorAll(".eks-dt-input")).map(i => i.value.trim());
+      return { I: parseFloat(tr.dataset.i), values };
+    });
     const filledRows = rows.filter(r => r.values.some(v => v !== ""));
     if (!filledRows.length) {
       statusEl.className = "eks-dt-status eks-dt-status-warn";
       statusEl.textContent = t("eksdata.empty");
-      return;
-    }
-    if (editable && filledRows.some(r => r.I === null)) {
-      statusEl.className = "eks-dt-status eks-dt-status-warn";
-      statusEl.textContent = t("eksdata.needI", { label: dt.independentLabel });
       return;
     }
     saveBtn.disabled = true;
@@ -1404,66 +1226,29 @@ function wireEksperimenDataTable(dt, opts) {
       return;
     }
     try {
-      const payloadStr = JSON.stringify({
+      const resp = await fetch(backendUrl, {
+        method: "POST", headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({
           mode: "eksperimen_data_save",
-          // Mode praktikum ikut dicatat di kolom "Topik" spreadsheet agar guru tahu
-          // data berasal dari praktikum sederhana atau lab.
-          topicId: currentTopic.id + (opts.modeKey ? " (" + opts.modeKey + ")" : ""),
+          topicId: currentTopic.id,
           studentId: getStudentId(),
           apiKey: getGeminiApiKey(),
           context: dt.context,
-          meta: {
-            independentLabel: dt.independentLabel, replicateLabel: dt.replicateLabel,
-            derivedLabel: dt.derivedLabel, replicateCount: dt.replicateCount,
-            derivedFactor: (typeof dt.derivedFactor === "number") ? dt.derivedFactor : 1
-          },
-          rows: rows.map(r => ({ I: r.I, values: r.values.map(v => (v === "" || isNaN(parseFloat(v))) ? null : parseFloat(v)) }))
-        });
-      const send = (url) => fetch(url, { method: "POST", headers: { "Content-Type": "text/plain" }, body: payloadStr });
-      let resp = await send(backendUrl);
-      let data = null;
-      try { data = await resp.json(); } catch (e) { data = null; }
-      // "Prompt kosong." = URL yang dipakai menjawab dengan backend yang tidak
-      // mengenal mode ini. Penyebab tersering: browser masih menyimpan URL backend
-      // LAMA di Pengaturan (mengalahkan URL baru di config.js). Coba sekali dengan
-      // URL bawaan situs; kalau berhasil, buang URL lama itu.
-      if (data && /^prompt kosong/i.test(String(data.error || "")) &&
-          DEFAULT_BACKEND_URL && backendUrl !== DEFAULT_BACKEND_URL) {
-        try {
-          const r2 = await send(DEFAULT_BACKEND_URL);
-          const d2 = await r2.json();
-          if (d2 && d2.ok) {
-            data = d2;
-            try { localStorage.removeItem(STORAGE_KEY_BACKEND); } catch (e) { /* abaikan */ }
-          }
-        } catch (e) { /* tetap pakai jawaban pertama */ }
-      }
-      if (data && data.ok) {
-        setEksperimenDataSavedFlag(currentTopic.id, true);
-        setEksperimenDataLocalFlag(currentTopic.id, false);
-        statusEl.className = "eks-dt-status " + (data.flagged ? "eks-dt-status-warn" : "eks-dt-status-ok");
-        statusEl.textContent = t("eksdata.saved") + " " + (data.feedback || "");
-        if (opts.onSaved) opts.onSaved();
-      } else {
-        // Server TIDAK mengonfirmasi penyimpanan. Penyebab tersering: Apps Script
-        // yang ter-deploy belum versi terbaru sehingga mode "eksperimen_data_save"
-        // tidak dikenal dan jatuh ke handler Gemini ("Prompt kosong."). Data TETAP
-        // aman di perangkat siswa (LKPD menyimpan otomatis) dan siswa boleh lanjut
-        // meminta persetujuan guru; flag "server" sengaja tidak dinyalakan.
-        setEksperimenDataLocalFlag(currentTopic.id, true);
-        const err = data && data.error ? String(data.error) : "";
-        let msgKey = "eksdata.sheeterror";
-        if (/^prompt kosong/i.test(err)) msgKey = "eksdata.staleBackend";
-        else if (err) msgKey = "eksdata.servererror";
+          rows: rows.map(r => ({ I: r.I, values: r.values.map(v => v === "" ? null : parseFloat(v)) }))
+        })
+      });
+      const data = await resp.json();
+      if (data.error) {
         statusEl.className = "eks-dt-status eks-dt-status-warn";
-        statusEl.textContent = t(msgKey, { error: err });
-        if (opts.onSaved) opts.onSaved();
+        statusEl.textContent = data.error;
+      } else {
+        setEksperimenDataSavedFlag(currentTopic.id, true);
+        statusEl.className = "eks-dt-status " + (data.flagged ? "eks-dt-status-warn" : "eks-dt-status-ok");
+        statusEl.textContent = (data.sheetError ? (t("eksdata.sheeterror") + " ") : t("eksdata.saved") + " ") + (data.feedback || "");
       }
     } catch (e) {
-      setEksperimenDataLocalFlag(currentTopic.id, true);
       statusEl.className = "eks-dt-status eks-dt-status-warn";
       statusEl.textContent = t("eksdata.networkerror");
-      if (opts.onSaved) opts.onSaved();
     }
     saveBtn.disabled = false;
   });
@@ -1473,24 +1258,6 @@ function getEksperimenDataSavedFlag(topicId) {
     const map = JSON.parse(localStorage.getItem(STORAGE_KEY_EKSDATA_SAVED) || "{}");
     return !!map[topicId];
   } catch (e) { return false; }
-}
-// Flag "data tersimpan lokal saja" (server tidak mengonfirmasi). Dipakai hanya
-// agar siswa tidak terkunci di tab Eksperimen; flag "server" di atas tetap
-// menandai penyimpanan yang benar-benar tiba di spreadsheet guru.
-function getEksperimenDataLocalFlag(topicId) {
-  try {
-    const map = JSON.parse(localStorage.getItem(STORAGE_KEY_EKSDATA_LOCAL) || "{}");
-    return !!map[topicId];
-  } catch (e) { return false; }
-}
-function setEksperimenDataLocalFlag(topicId, val) {
-  let map = {};
-  try { map = JSON.parse(localStorage.getItem(STORAGE_KEY_EKSDATA_LOCAL) || "{}"); } catch (e) { /* abaikan */ }
-  map[topicId] = !!val;
-  try { localStorage.setItem(STORAGE_KEY_EKSDATA_LOCAL, JSON.stringify(map)); } catch (e) { /* abaikan */ }
-}
-function getEksperimenDataReadyFlag(topicId) {
-  return getEksperimenDataSavedFlag(topicId) || getEksperimenDataLocalFlag(topicId);
 }
 function setEksperimenDataSavedFlag(topicId, val) {
   let map = {};
@@ -1503,76 +1270,28 @@ function setEksperimenDataSavedFlag(topicId, val) {
 function renderLatihan() {
   const panel = document.getElementById("panel-latihan");
   if (currentTopic.status === "ready" && currentTopic.latihan && currentTopic.latihan.length) {
-    panel.innerHTML = pjblStageHTML("latihan") + `<div id="latihan-diff"></div>` + currentTopic.latihan.map((q, i) => {
-      // Kunci jawaban TIDAK ditulis ke DOM saat render: label "(jawaban benar)"
-      // dan pembahasan baru muncul setelah siswa memilih/menulis jawaban lalu
-      // menekan "Cek Jawaban" (lihat wireLatihanChecks).
-      let inputHTML = "";
+    panel.innerHTML = pjblStageHTML("latihan") + currentTopic.latihan.map((q, i) => {
+      let optionsHTML = "";
       if (q.type === "mcq") {
-        inputHTML = `<ul class="options latihan-options">${q.options.map((opt, oi) =>
-          `<li><label><input type="radio" name="lat-${i}" value="${oi}"> ${String.fromCharCode(65 + oi)}. ${trContent(opt)}</label></li>`
+        optionsHTML = `<ul class="options">${q.options.map((opt, oi) =>
+          `<li>${String.fromCharCode(65 + oi)}. ${trContent(opt)}${oi === q.correct ? ` <span class="muted">${t("answer.correct")}</span>` : ''}</li>`
         ).join("")}</ul>`;
-      } else {
-        inputHTML = `<textarea class="latihan-answer" rows="3" placeholder="${escapeAttr(t("question.answer.placeholder"))}" aria-label="${escapeAttr(t("question.label", { n: i + 1 }))}"></textarea>`;
       }
       return `
-        <div class="question-card latihan-q" data-i="${i}">
+        <div class="question-card">
           <div class="q-title">${t("question.label", { n: i + 1 })}</div>
           <div>${trContent(q.question)}</div>
-          ${inputHTML}
-          <button type="button" class="reveal-btn latihan-check-btn">${t("question.check")}</button>
-          <p class="confirm-feedback small latihan-feedback" hidden></p>
+          ${optionsHTML}
+          <button class="reveal-btn" onclick="this.nextElementSibling.classList.toggle('show')">${t("question.reveal")}</button>
           <div class="solution"><strong>${t("question.solution")}</strong><br>${trContent(q.solution)}</div>
         </div>`;
-    }).join("") + `<div id="latihan-extra"></div>`;
-    wireLatihanChecks(panel);
+    }).join("");
   } else {
     panel.innerHTML = comingSoonHTML("latihan");
   }
   if (window.MathJax && window.MathJax.typesetPromise) {
     window.MathJax.typesetPromise([panel]);
   }
-}
-
-// "Cek Jawaban" pada Latihan Soal. Pilihan ganda: tandai pilihan siswa benar/
-// salah, dan HANYA SETELAH tombol ditekan tampilkan label "(jawaban benar)" pada
-// opsi yang benar + pembahasan. Uraian: tampilkan pembahasan (jawaban model)
-// setelah siswa menekan tombol; tombol yang sama menyembunyikannya lagi.
-function wireLatihanChecks(panel) {
-  panel.querySelectorAll(".latihan-q").forEach(card => {
-    const q = currentTopic.latihan[parseInt(card.dataset.i, 10)];
-    const btn = card.querySelector(".latihan-check-btn");
-    const fb = card.querySelector(".latihan-feedback");
-    const sol = card.querySelector(".solution");
-    btn.addEventListener("click", () => {
-      if (q.type !== "mcq") {
-        sol.classList.toggle("show");
-        return;
-      }
-      const picked = card.querySelector("input[type=radio]:checked");
-      fb.hidden = false;
-      if (!picked) {
-        fb.className = "confirm-feedback small warn latihan-feedback";
-        fb.textContent = t("extra.pickone");
-        return;
-      }
-      const ok = parseInt(picked.value, 10) === q.correct;
-      card.querySelectorAll(".latihan-options li").forEach((li, oi) => {
-        li.classList.remove("opt-correct", "opt-wrong");
-        const old = li.querySelector(".opt-correct-tag");
-        if (old) old.remove();
-        if (oi === q.correct) {
-          li.classList.add("opt-correct");
-          (li.querySelector("label") || li).insertAdjacentHTML("beforeend", ` <span class="muted opt-correct-tag">${t("answer.correct")}</span>`);
-        } else if (oi === parseInt(picked.value, 10)) {
-          li.classList.add("opt-wrong");
-        }
-      });
-      fb.className = "confirm-feedback small " + (ok ? "ok" : "warn") + " latihan-feedback";
-      fb.textContent = ok ? t("extra.correct") : t("extra.wrong", { letter: String.fromCharCode(65 + q.correct) });
-      sol.classList.add("show");
-    });
-  });
 }
 
 function comingSoonHTML(section) {
@@ -1601,7 +1320,7 @@ function setupLabForTopic() {
   document.getElementById("pf-goal").value = "";
   document.getElementById("pf-extra").value = "";
   document.getElementById("pf-vistype").selectedIndex = 0;
-  applyAbilityToLab();
+  document.getElementById("pf-level").selectedIndex = 1;
   document.getElementById("final-prompt").value = "";
   document.getElementById("preview-frame").removeAttribute("srcdoc");
   document.getElementById("preview-frame").hidden = false;
@@ -1634,6 +1353,292 @@ function setupLabForTopic() {
   } else {
     const banner = document.getElementById("lab-gate-banner");
     if (banner) { banner.hidden = true; banner.innerHTML = ""; }
+  }
+
+  setupVirtualLabForTopic();
+}
+
+/* ---------------- Praktikum Virtual (tab Lab, tanpa alat) ----------------
+   Eksperimen TAMBAHAN untuk topik yang punya currentTopic.virtualLab (lihat
+   MAGNETIC_VIRTUAL_LAB di js/content.js) - opsi bagi sekolah yang belum
+   punya alat sederhana maupun alat lab untuk praktikum terkait. Berbeda dari
+   "Generator Prompt Terstruktur" di bawahnya (yang generatif/AI dan butuh
+   API key + backend), kartu ini MURNI klien: arus & pembacaan neraca
+   disimulasikan dengan JS biasa, data disimpan hanya di localStorage
+   browser siswa - TIDAK PERNAH memanggil backend, jadi tidak menambah
+   ketergantungan apa pun pada apps-script/Code.gs yang sudah ada. */
+function setupVirtualLabForTopic() {
+  const card = document.getElementById("lab-vlab-card");
+  if (!card) return;
+  if (currentTopic.status === "ready" && currentTopic.virtualLab) {
+    card.hidden = false;
+    card.innerHTML = renderVirtualLabHTML(currentTopic.virtualLab);
+    wireVirtualLab(currentTopic);
+    if (window.MathJax && window.MathJax.typesetPromise) {
+      window.MathJax.typesetPromise([card]);
+    }
+  } else {
+    card.hidden = true;
+    card.innerHTML = "";
+  }
+}
+
+// B "sungguhan" alat virtual dirandom SEKALI per siswa per topik, lalu
+// disimpan supaya tidak berubah-ubah tiap kali siswa buka ulang topiknya
+// (persis seperti satu set magnet Magnadur sungguhan yang nilainya tetap).
+function getVirtualLabTrueB(topic) {
+  let map = {};
+  try { map = JSON.parse(localStorage.getItem(STORAGE_KEY_VLAB_TRUEB) || "{}"); } catch (e) { /* abaikan */ }
+  if (typeof map[topic.id] === "number" && !isNaN(map[topic.id])) return map[topic.id];
+  const { bTrueMin, bTrueMax } = topic.virtualLab.apparatus;
+  const b = bTrueMin + Math.random() * (bTrueMax - bTrueMin);
+  map[topic.id] = b;
+  localStorage.setItem(STORAGE_KEY_VLAB_TRUEB, JSON.stringify(map));
+  return b;
+}
+
+function getVirtualLabSavedData(topicId) {
+  try {
+    const map = JSON.parse(localStorage.getItem(STORAGE_KEY_VLAB_DATA) || "{}");
+    return map[topicId] || null;
+  } catch (e) { return null; }
+}
+function setVirtualLabSavedData(topicId, data) {
+  let map = {};
+  try { map = JSON.parse(localStorage.getItem(STORAGE_KEY_VLAB_DATA) || "{}"); } catch (e) { /* abaikan */ }
+  map[topicId] = data;
+  localStorage.setItem(STORAGE_KEY_VLAB_DATA, JSON.stringify(map));
+}
+
+// Simulasi pembacaan neraca (gram): F = B x I x L sungguhan, ditambah noise
+// multiplikatif+aditif kecil supaya tiap pembacaan sedikit berbeda-beda
+// (meniru fluktuasi neraca elektronik sungguhan), lalu dibulatkan ke 0,01 g
+// mengikuti ketelitian neraca timbang elektronik pada eksperimen nyata.
+function computeVirtualReadingGrams(topic, I) {
+  const { lengthM, noiseFrac, noiseAbsG } = topic.virtualLab.apparatus;
+  const B = getVirtualLabTrueB(topic);
+  const trueF = B * I * lengthM;
+  const trueGrams = (trueF / 9.81) * 1000;
+  const noisy = trueGrams * (1 + (Math.random() - 0.5) * 2 * noiseFrac) + (Math.random() - 0.5) * 2 * noiseAbsG;
+  return Math.max(0, noisy);
+}
+
+function renderVirtualLabHTML(vl) {
+  const dt = vl.dataTable;
+  const rowsHTML = dt.independentValues.map((iVal, ri) => {
+    const repCells = Array.from({ length: dt.replicateCount }, (_, ci) =>
+      `<td><input type="number" step="any" class="eks-dt-input vlab-dt-input" data-row="${ri}" data-col="${ci}" readonly aria-label="${dt.replicateLabel} #${ci + 1}"></td>`
+    ).join("");
+    return `<tr data-row="${ri}" data-i="${iVal}">` +
+      `<td class="eks-dt-i">${String(iVal).replace(".", ",")}</td>` +
+      repCells +
+      `<td class="eks-dt-avg" data-row="${ri}">-</td>` +
+      `<td class="eks-dt-f" data-row="${ri}">-</td>` +
+      `</tr>`;
+  }).join("");
+  const repHeaders = Array.from({ length: dt.replicateCount }, (_, ci) =>
+    `<th>${dt.replicateLabel}<sub>${ci + 1}</sub></th>`
+  ).join("");
+  const currentOptionsHTML = dt.independentValues.map(v =>
+    `<option value="${v}">${String(v).replace(".", ",")} A</option>`
+  ).join("");
+
+  return `
+    <span class="badge badge-soon">${t("vlab.badgelabel")}</span>
+    <h3 style="margin-top:10px;">${trContent(vl.title)}</h3>
+    ${trContent(vl.intro)}
+
+    <div class="vlab-apparatus">
+      <p><strong>${t("vlab.apparatus.length")}:</strong> $L$ = ${vl.apparatus.lengthM.toFixed(4)} m
+        (${(vl.apparatus.lengthM * 100).toFixed(2)} cm)</p>
+      <label>${t("vlab.current.label")}
+        <select id="vlab-current-select">${currentOptionsHTML}</select>
+      </label>
+      <button type="button" id="vlab-read-btn" class="btn btn-secondary btn-small">${t("vlab.readbtn")}</button>
+      <p id="vlab-reading-status"></p>
+    </div>
+
+    <div class="eks-datatable-section">
+      <h4>${t("eksdata.title")}</h4>
+      <table class="eks-datatable" id="vlab-datatable">
+        <thead><tr><th>${dt.independentLabel}</th>${repHeaders}<th>${dt.replicateLabel} rata-rata</th><th>${dt.derivedLabel}</th></tr></thead>
+        <tbody>${rowsHTML}</tbody>
+      </table>
+      <svg id="vlab-graph" class="vlab-graph" viewBox="0 0 320 220" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+
+    <div class="prompt-form">
+      <label>${t("vlab.hypothesis.label")}
+        <textarea id="vlab-hypothesis" rows="2" placeholder="${escapeAttr(t("vlab.hypothesis.placeholder"))}"></textarea>
+      </label>
+
+      <div class="vlab-calc-row">
+        <label>${t("vlab.gradient.label")}
+          <input type="text" id="vlab-gradient-input" inputmode="decimal">
+        </label>
+        <label>${t("vlab.bvalue.label")}
+          <input type="text" id="vlab-b-input" inputmode="decimal">
+        </label>
+      </div>
+      <button type="button" id="vlab-check-btn" class="btn btn-secondary btn-small">${t("vlab.checkbtn")}</button>
+      <p id="vlab-check-status" class="muted small"></p>
+
+      <label>${t("vlab.conclusion.label")}
+        <textarea id="vlab-conclusion" rows="2"></textarea>
+      </label>
+    </div>
+
+    <button type="button" id="vlab-save-btn" class="btn btn-primary btn-small">${t("vlab.savebtn")}</button>
+    <p id="vlab-save-status" class="eks-dt-status"></p>
+  `;
+}
+
+function recalcVlabRow(tr) {
+  const inputs = tr.querySelectorAll(".vlab-dt-input");
+  const nums = Array.from(inputs).map(i => parseFloat(i.value)).filter(n => !isNaN(n));
+  const avgCell = tr.querySelector(".eks-dt-avg");
+  const fCell = tr.querySelector(".eks-dt-f");
+  if (nums.length) {
+    const avg = nums.reduce((a, b) => a + b, 0) / nums.length;
+    const F = (avg / 1000) * 9.81;
+    avgCell.textContent = avg.toFixed(3);
+    fCell.textContent = F.toFixed(4);
+  } else {
+    avgCell.textContent = "-";
+    fCell.textContent = "-";
+  }
+  drawVlabGraph();
+}
+
+function drawVlabGraph() {
+  const svg = document.getElementById("vlab-graph");
+  const table = document.getElementById("vlab-datatable");
+  if (!svg || !table) return;
+  const rows = Array.from(table.querySelectorAll("tbody tr"));
+  const points = rows.map(tr => {
+    const I = parseFloat(tr.dataset.i);
+    const F = parseFloat(tr.querySelector(".eks-dt-f").textContent);
+    return isNaN(F) ? null : { I, F };
+  }).filter(Boolean);
+
+  const W = 320, H = 220, padL = 38, padB = 30, padT = 12, padR = 14;
+  let html = `<line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="var(--border)" stroke-width="1.5"/>` +
+    `<line x1="${padL}" y1="${H - padB}" x2="${padL}" y2="${padT}" stroke="var(--border)" stroke-width="1.5"/>` +
+    `<text x="${(W + padL - padR) / 2}" y="${H - 8}" font-size="10" fill="var(--muted)" text-anchor="middle">${t("vlab.graph.axis.i")}</text>` +
+    `<text x="6" y="${padT + 4}" font-size="10" fill="var(--muted)">${t("vlab.graph.axis.f")}</text>`;
+  if (points.length) {
+    const maxI = Math.max(...points.map(p => p.I)) * 1.15 || 1;
+    const maxF = Math.max(...points.map(p => p.F)) * 1.25 || 0.01;
+    const xScale = (I) => padL + (I / maxI) * (W - padL - padR);
+    const yScale = (F) => (H - padB) - (F / maxF) * (H - padB - padT);
+    html += points.map(p =>
+      `<circle cx="${xScale(p.I).toFixed(1)}" cy="${yScale(p.F).toFixed(1)}" r="4" fill="var(--accent)"/>`
+    ).join("");
+  }
+  svg.innerHTML = html;
+}
+
+function wireVirtualLab(topic) {
+  const vl = topic.virtualLab;
+  const card = document.getElementById("lab-vlab-card");
+  if (!card) return;
+  const table = card.querySelector("#vlab-datatable");
+  const select = card.querySelector("#vlab-current-select");
+  const readBtn = card.querySelector("#vlab-read-btn");
+  const readingStatus = card.querySelector("#vlab-reading-status");
+  const checkBtn = card.querySelector("#vlab-check-btn");
+  const checkStatus = card.querySelector("#vlab-check-status");
+  const saveBtn = card.querySelector("#vlab-save-btn");
+  const saveStatus = card.querySelector("#vlab-save-status");
+  const hypInput = card.querySelector("#vlab-hypothesis");
+  const gradInput = card.querySelector("#vlab-gradient-input");
+  const bInput = card.querySelector("#vlab-b-input");
+  const conclInput = card.querySelector("#vlab-conclusion");
+
+  readBtn.addEventListener("click", () => {
+    const I = parseFloat(select.value);
+    const tr = Array.from(table.querySelectorAll("tbody tr"))
+      .find(row => Math.abs(parseFloat(row.dataset.i) - I) < 1e-9);
+    if (!tr) return;
+    const inputs = Array.from(tr.querySelectorAll(".vlab-dt-input"));
+    const emptyInput = inputs.find(i => i.value.trim() === "");
+    if (!emptyInput) {
+      readingStatus.textContent = t("vlab.rowfull");
+      return;
+    }
+    const grams = computeVirtualReadingGrams(topic, I);
+    emptyInput.value = grams.toFixed(2);
+    readingStatus.textContent = t("vlab.reading.result", { grams: grams.toFixed(2) });
+    recalcVlabRow(tr);
+  });
+
+  table.addEventListener("input", (e) => {
+    if (!e.target.classList.contains("vlab-dt-input")) return;
+    recalcVlabRow(e.target.closest("tr"));
+  });
+
+  checkBtn.addEventListener("click", () => {
+    const rows = Array.from(table.querySelectorAll("tbody tr")).map(tr => {
+      const I = parseFloat(tr.dataset.i);
+      const F = parseFloat(tr.querySelector(".eks-dt-f").textContent);
+      return isNaN(F) ? null : { I, F };
+    }).filter(Boolean);
+    if (rows.length < 3) {
+      checkStatus.textContent = t("vlab.checkneeddata");
+      return;
+    }
+    const n = rows.length;
+    const sumX = rows.reduce((a, r) => a + r.I, 0);
+    const sumY = rows.reduce((a, r) => a + r.F, 0);
+    const sumXY = rows.reduce((a, r) => a + r.I * r.F, 0);
+    const sumX2 = rows.reduce((a, r) => a + r.I * r.I, 0);
+    const denom = (n * sumX2 - sumX * sumX);
+    const gradient = denom !== 0 ? (n * sumXY - sumX * sumY) / denom : 0;
+    const B = gradient / vl.apparatus.lengthM;
+    checkStatus.textContent = t("vlab.checkresult", { grad: gradient.toFixed(4), b: B.toFixed(3) });
+  });
+
+  saveBtn.addEventListener("click", () => {
+    const rows = Array.from(table.querySelectorAll("tbody tr")).map(tr => ({
+      I: parseFloat(tr.dataset.i),
+      values: Array.from(tr.querySelectorAll(".vlab-dt-input")).map(i => i.value.trim())
+    }));
+    const filledRows = rows.filter(r => r.values.some(v => v !== ""));
+    if (!filledRows.length || !hypInput.value.trim()) {
+      saveStatus.className = "eks-dt-status eks-dt-status-warn";
+      saveStatus.textContent = t("vlab.empty");
+      return;
+    }
+    setVirtualLabSavedData(topic.id, {
+      hypothesis: hypInput.value.trim(),
+      rows,
+      gradient: gradInput.value.trim(),
+      bValue: bInput.value.trim(),
+      conclusion: conclInput.value.trim(),
+      savedAt: new Date().toISOString()
+    });
+    saveStatus.className = "eks-dt-status eks-dt-status-ok";
+    saveStatus.textContent = t("vlab.saved");
+  });
+
+  // Pulihkan data tersimpan sebelumnya (kalau ada) supaya siswa tidak
+  // kehilangan progres saat pindah tab/topik lalu kembali lagi ke sini.
+  const saved = getVirtualLabSavedData(topic.id);
+  if (saved) {
+    hypInput.value = saved.hypothesis || "";
+    gradInput.value = saved.gradient || "";
+    bInput.value = saved.bValue || "";
+    conclInput.value = saved.conclusion || "";
+    (saved.rows || []).forEach(r => {
+      const tr = Array.from(table.querySelectorAll("tbody tr"))
+        .find(row => Math.abs(parseFloat(row.dataset.i) - r.I) < 1e-9);
+      if (!tr) return;
+      const inputs = tr.querySelectorAll(".vlab-dt-input");
+      (r.values || []).forEach((v, ci) => { if (inputs[ci]) inputs[ci].value = v; });
+      recalcVlabRow(tr);
+    });
+  } else {
+    drawVlabGraph();
   }
 }
 
@@ -1686,10 +1691,6 @@ document.getElementById("pf-build-btn").addEventListener("click", () => {
     prompt += t("promptgen.goal", { concept: concept, goal: goal });
   }
   prompt += t("promptgen.level", { level: level });
-  // Arahan tambahan menurut tingkat belajar siswa (differentiated learning);
-  // "menengah" = standar, tanpa arahan tambahan.
-  const studentLevel = currentLevel();
-  if (studentLevel !== "menengah") prompt += t("promptgen.leveldirective." + studentLevel);
   prompt += t("promptgen.footer");
   if (extra) {
     prompt += t("promptgen.extra", { extra: extra });
@@ -1932,178 +1933,6 @@ document.getElementById("download-btn").addEventListener("click", () => {
 
 document.getElementById("lab-reflection-submit-btn").addEventListener("click", startLabReflectionGate);
 
-/* ---------------- Differentiated learning: UI ---------------- */
-function formulaSheetHTML(open) {
-  if (!currentTopic || !currentTopic.formulaSheet) return "";
-  const txt = trContent(currentTopic.formulaSheet).trim();
-  if (!txt) return "";
-  return `<details class="diff-formula"${open ? " open" : ""}><summary>${t("diff.formula.title")}</summary><pre class="diff-formula-text">${escapeHtmlQ(txt)}</pre></details>`;
-}
-function initAbilityBar() {
-  const sel = document.getElementById("ability-select");
-  if (!sel) return;
-  sel.innerHTML = `<option value="auto">${t("ability.select.auto")}</option>` +
-    ABILITY_LEVELS.map(l => `<option value="${l}">${t("level." + l)}</option>`).join("");
-  sel.addEventListener("change", () => {
-    setManualLevel(sel.value === "auto" ? null : sel.value);
-    onLevelChanged();
-  });
-}
-function refreshAbilityBar() {
-  const bar = document.getElementById("ability-bar");
-  if (!bar) return;
-  if (!currentTopic || currentTopic.status !== "ready") { bar.hidden = true; return; }
-  bar.hidden = false;
-  const lvl = currentLevel();
-  const st = getAbilityState();
-  const chip = document.getElementById("ability-chip");
-  chip.textContent = t("level." + lvl);
-  chip.dataset.level = lvl;
-  document.getElementById("ability-source").textContent = "(" + (st.manual ? t("ability.manual") : t("ability.auto")) + ")";
-  document.getElementById("ability-desc").textContent = t("ability.desc." + lvl);
-  document.getElementById("ability-select").value = st.manual || "auto";
-}
-function applyAbilityToLab() {
-  const sel = document.getElementById("pf-level");
-  if (!sel) return;
-  const lvl = currentLevel();
-  sel.selectedIndex = lvl === "dasar" ? 0 : (lvl === "lanjut" ? 2 : 1);
-}
-// Dipanggil setiap tingkat berubah (hasil kuis Materi baru, atau dipilih manual).
-function onLevelChanged() {
-  refreshAbilityBar();
-  // LKPD punya soal pengayaan (tingkat lanjut) & petunjuk (tingkat dasar);
-  // jawaban tersimpan sehingga aman digambar ulang.
-  if (currentTopic && currentTopic.eksperimen && currentTopic.eksperimen.lkpd && currentTopic.status === "ready") renderEksperimen();
-  renderMateriDifferentiation();
-  renderLatihanDifferentiation();
-  applyAbilityToLab();
-}
-function renderMateriDifferentiation() {
-  const el = document.getElementById("materi-diff");
-  if (!el) return;
-  if (!currentTopic || currentTopic.status !== "ready") { el.innerHTML = ""; return; }
-  const lvl = currentLevel();
-  let html = "";
-  if (lvl === "dasar") {
-    html = `<div class="diff-card diff-dasar"><h4>${t("diff.materi.dasar.title")}</h4><ol>` +
-      [1, 2, 3, 4].map(i => `<li>${t("diff.materi.dasar.s" + i)}</li>`).join("") + `</ol>` +
-      formulaSheetHTML(true) +
-      `<button type="button" class="btn btn-secondary btn-small diff-tutor-btn" data-msg="diff.materi.dasar.tutormsg">${t("diff.materi.dasar.tutorbtn")}</button></div>`;
-  } else if (lvl === "lanjut") {
-    html = `<div class="diff-card diff-lanjut"><h4>${t("diff.materi.lanjut.title")}</h4><ul>` +
-      [1, 2, 3].map(i => `<li>${t("diff.materi.lanjut.c" + i)}</li>`).join("") + `</ul>` +
-      `<button type="button" class="btn btn-secondary btn-small diff-tutor-btn" data-msg="diff.materi.lanjut.tutormsg">${t("diff.materi.lanjut.tutorbtn")}</button></div>`;
-  } else {
-    const sheet = formulaSheetHTML(false);
-    if (sheet) html = `<div class="diff-card diff-menengah"><h4>${t("diff.materi.menengah.title")}</h4>${sheet}</div>`;
-  }
-  el.innerHTML = html;
-  el.querySelectorAll(".diff-tutor-btn").forEach(btn => {
-    btn.addEventListener("click", () => { if (window.Chatbot) Chatbot.ask(t(btn.dataset.msg)); });
-  });
-}
-function renderLatihanDifferentiation() {
-  const top = document.getElementById("latihan-diff");
-  const bottom = document.getElementById("latihan-extra");
-  extraQuestions = [];
-  if (top) top.innerHTML = "";
-  if (bottom) bottom.innerHTML = "";
-  if (!top || !bottom || !currentTopic || currentTopic.status !== "ready") return;
-  const lvl = currentLevel();
-  if (lvl === "dasar") {
-    top.innerHTML = `<div class="diff-card diff-dasar"><h4>${t("diff.latihan.dasar.title")}</h4><ol>` +
-      [1, 2, 3, 4, 5].map(i => `<li>${t("diff.latihan.dasar.s" + i)}</li>`).join("") + `</ol>${formulaSheetHTML(true)}</div>`;
-  } else if (lvl === "lanjut") {
-    top.innerHTML = `<div class="diff-card diff-lanjut"><h4>${t("diff.latihan.lanjut.title")}</h4><ul>` +
-      [1, 2, 3].map(i => `<li>${t("diff.latihan.lanjut.c" + i)}</li>`).join("") + `</ul></div>`;
-  } else {
-    top.innerHTML = `<div class="diff-card diff-menengah"><h4>${t("diff.latihan.menengah.title")}</h4><p>${t("diff.latihan.menengah.tip")}</p>${formulaSheetHTML(false)}</div>`;
-  }
-  bottom.innerHTML = `<div class="diff-card extra-practice"><h4>${t("extra.title", { level: t("level." + lvl) })}</h4>` +
-    `<p class="muted small">${t("extra.desc")}</p>` +
-    `<div class="lab-actions"><button type="button" id="extra-gen-btn" class="btn btn-primary btn-small">${t("extra.btn", { n: EXTRA_PRACTICE_COUNT })}</button>` +
-    `<span id="extra-status" class="muted small"></span></div><div id="extra-list"></div></div>`;
-  document.getElementById("extra-gen-btn").addEventListener("click", generateExtraPractice);
-}
-function stripTagsForPrompt(str) {
-  return String(str == null ? "" : str).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-}
-async function generateExtraPractice() {
-  const btn = document.getElementById("extra-gen-btn");
-  const status = document.getElementById("extra-status");
-  if (!btn || !currentTopic) return;
-  const apiKey = getGeminiApiKey();
-  const backendUrl = getBackendUrl();
-  if (!apiKey) { status.textContent = t("extra.needkey"); return; }
-  if (!backendUrl) { status.textContent = t("extra.nobackend"); return; }
-  const topic = currentTopic;
-  const lvl = currentLevel();
-  const existing = extraQuestions.map(q => q.question)
-    .concat((topic.latihan || []).map(q => stripTagsForPrompt(trContent(q.question)))).slice(0, 30);
-  btn.disabled = true;
-  status.textContent = t("extra.loading");
-  try {
-    const resp = await fetch(backendUrl, {
-      method: "POST", headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({
-        mode: "quiz_generate", apiKey: apiKey, lang: getLang(),
-        topicTitle: trContent(topic.title),
-        formulaRef: topic.formulaSheet ? trContent(topic.formulaSheet) : "",
-        existingQuestions: existing, count: EXTRA_PRACTICE_COUNT,
-        questionType: lvl === "lanjut" ? "mixed" : "mcq", difficulty: lvl
-      })
-    });
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error);
-    // Kalau siswa keburu pindah topik/ganti tingkat, hasil ini sudah tidak relevan.
-    if (!currentTopic || currentTopic.id !== topic.id || currentLevel() !== lvl) return;
-    extraQuestions = extraQuestions.concat(data.questions || []);
-    renderExtraList();
-    status.textContent = data.warning || "";
-    btn.textContent = t("extra.btn.more", { n: EXTRA_PRACTICE_COUNT });
-  } catch (err) {
-    status.textContent = t("extra.failed", { err: err.message });
-  } finally {
-    btn.disabled = false;
-  }
-}
-function renderExtraList() {
-  const list = document.getElementById("extra-list");
-  if (!list) return;
-  const lvl = currentLevel();
-  list.innerHTML = extraQuestions.map((q, i) => {
-    const opts = (q.type === "mcq")
-      ? `<ul class="options extra-options">${(q.options || []).map((o, oi) =>
-          `<li><label><input type="radio" name="extra-${i}" value="${oi}"> ${String.fromCharCode(65 + oi)}. ${escapeHtmlQ(o)}</label></li>`).join("")}</ul>`
-      : "";
-    const action = (q.type === "mcq")
-      ? `<button type="button" class="reveal-btn extra-check-btn" data-i="${i}">${t("extra.check")}</button>`
-      : `<button type="button" class="reveal-btn extra-reveal-btn" data-i="${i}">${t("extra.reveal")}</button>`;
-    return `<div class="question-card extra-q" data-i="${i}">` +
-      `<div class="q-title">${t("extra.q.label", { n: i + 1 })} <span class="level-tag level-${lvl}">${t("level." + lvl)}</span></div>` +
-      `<div>${escapeHtmlQ(q.question)}</div>${opts}${action}` +
-      `<p class="confirm-feedback small extra-feedback" hidden></p>` +
-      `<div class="solution"><strong>${t("extra.solution")}</strong><br>${escapeHtmlQ(q.modelAnswer || "-")}</div></div>`;
-  }).join("");
-  list.querySelectorAll(".extra-check-btn").forEach(btn => btn.addEventListener("click", () => {
-    const card = btn.closest(".extra-q");
-    const q = extraQuestions[parseInt(btn.dataset.i, 10)];
-    const fb = card.querySelector(".extra-feedback");
-    const picked = card.querySelector("input[type=radio]:checked");
-    fb.hidden = false;
-    if (!picked) { fb.className = "confirm-feedback small warn extra-feedback"; fb.textContent = t("extra.pickone"); return; }
-    const ok = parseInt(picked.value, 10) === q.correct;
-    fb.className = "confirm-feedback small " + (ok ? "ok" : "warn") + " extra-feedback";
-    fb.textContent = ok ? t("extra.correct") : t("extra.wrong", { letter: String.fromCharCode(65 + q.correct) });
-    card.querySelector(".solution").classList.add("show");
-  }));
-  list.querySelectorAll(".extra-reveal-btn").forEach(btn => btn.addEventListener("click", () => {
-    btn.closest(".extra-q").querySelector(".solution").classList.toggle("show");
-  }));
-  if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise([list]).catch(() => {});
-}
-
 /* ---------------- Pengaturan (modal) ---------------- */
 const settingsModal = document.getElementById("settings-modal");
 function refreshUnlockStatusUI() {
@@ -2135,7 +1964,7 @@ function openSettingsModal() {
   refreshClassSessionUI();
   const studentDetails = document.getElementById("settings-student-info-details");
   if (studentDetails) {
-    const isStudent = getUserRole() !== "";
+    const isStudent = getUserRole() === "student";
     studentDetails.hidden = !isStudent;
     if (isStudent) {
       document.getElementById("settings-student-name-input").value = getStudentName();
@@ -2171,8 +2000,6 @@ document.getElementById("settings-reset-onboarding-btn").addEventListener("click
   localStorage.removeItem(STORAGE_KEY_STUDENT_CLASS);
   localStorage.removeItem(STORAGE_KEY_UNLOCK_ALL);
   leaveClassSession(null);
-  localStorage.removeItem(STORAGE_KEY_SESSION_STEP_DONE);
-  localStorage.removeItem(STORAGE_KEY_SELF_CODE_OK);
   settingsModal.hidden = true;
   applyGate();
 });
@@ -2180,27 +2007,25 @@ document.getElementById("settings-reset-onboarding-btn").addEventListener("click
 /* ============================================================
    Onboarding gate (wajib, layar penuh, sebelum situs bisa diakses)
    ------------------------------------------------------------
-   Urutan: API key -> cara belajar (di kelas / mandiri) -> nama & kelas ->
-   kode. KEDUA cara wajib memakai kode:
-     - Belajar di kelas : kode sesi dari guru (diverifikasi ke backend)
-     - Belajar mandiri  : kode belajar mandiri (SELF_STUDY_CODE di config.js)
-   #site-shell baru ditampilkan setelah computeGateStep() mengembalikan null.
+   Urutan: API key -> pilih peran -> (siswa) nama+kelas -> kode dari
+   guru, ATAU (bukan siswa) Kode Eksplorasi Bebas. #site-shell baru
+   ditampilkan setelah computeGateStep() mengembalikan null.
    ============================================================ */
-const GATE_STEPS = ["apikey", "role", "student-info", "student-code", "self-code"];
+const GATE_STEPS = ["apikey", "role", "student-info", "student-code", "guest-code"];
 
 function computeGateStep() {
   if (!getGeminiApiKey()) return "apikey";
   const role = getUserRole();
-  if (!role) return "role";
-  if (!getStudentName() || !getStudentClass()) return "student-info";
-  if (role === "class") {
-    // Wajib punya kode sesi guru. Setelah kode diterima sekali, siswa tidak
-    // dilempar kembali ke gerbang saat sesi berakhir (lihat leaveClassSession).
-    if (!isInClassSession() && localStorage.getItem(STORAGE_KEY_SESSION_STEP_DONE) !== "1") return "student-code";
+  if (role === "student") {
+    if (!getStudentName() || !getStudentClass()) return "student-info";
+    if (!isInClassSession()) return "student-code";
     return null;
   }
-  if (localStorage.getItem(STORAGE_KEY_SELF_CODE_OK) !== "1") return "self-code";
-  return null;
+  if (role === "guest") {
+    if (!isUnlockAll()) return "guest-code";
+    return null;
+  }
+  return "role";
 }
 function showGateStep(step) {
   GATE_STEPS.forEach(s => {
@@ -2256,12 +2081,12 @@ document.getElementById("gate-key-save-btn").addEventListener("click", () => {
   applyGate();
 });
 
-document.getElementById("gate-role-class-btn").addEventListener("click", () => {
-  localStorage.setItem(STORAGE_KEY_ROLE, "class");
+document.getElementById("gate-role-student-btn").addEventListener("click", () => {
+  localStorage.setItem(STORAGE_KEY_ROLE, "student");
   applyGate();
 });
-document.getElementById("gate-role-self-btn").addEventListener("click", () => {
-  localStorage.setItem(STORAGE_KEY_ROLE, "self");
+document.getElementById("gate-role-guest-btn").addEventListener("click", () => {
+  localStorage.setItem(STORAGE_KEY_ROLE, "guest");
   applyGate();
 });
 
@@ -2307,26 +2132,27 @@ document.getElementById("gate-student-code-back-btn").addEventListener("click", 
   showGateStep("student-info");
 });
 
-document.getElementById("gate-self-code-btn").addEventListener("click", () => {
-  const input = document.getElementById("gate-self-code-input");
-  const status = document.getElementById("gate-self-code-status");
+document.getElementById("gate-guest-code-btn").addEventListener("click", () => {
+  const input = document.getElementById("gate-guest-code-input");
+  const status = document.getElementById("gate-guest-code-status");
   const code = input.value.trim();
-  if (!code) { status.textContent = t("gate.self.code.needcode"); status.classList.remove("ok"); return; }
-  if (SELF_STUDY_CODE && code.toLowerCase() === SELF_STUDY_CODE.toLowerCase()) {
-    localStorage.setItem(STORAGE_KEY_SELF_CODE_OK, "1");
+  if (!code) { status.textContent = t("gate.guest.code.needcode"); status.classList.remove("ok"); return; }
+  if (TEACHER_UNLOCK_CODE && code.toLowerCase() === TEACHER_UNLOCK_CODE.toLowerCase()) {
+    localStorage.setItem(STORAGE_KEY_UNLOCK_ALL, "true");
     input.value = "";
     status.textContent = "";
     applyGate();
   } else {
-    status.textContent = t("gate.self.code.wrong");
+    status.textContent = t("gate.guest.code.wrong");
     status.classList.remove("ok");
   }
 });
-document.getElementById("gate-self-code-input").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") document.getElementById("gate-self-code-btn").click();
+document.getElementById("gate-guest-code-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") document.getElementById("gate-guest-code-btn").click();
 });
-document.getElementById("gate-self-code-back-btn").addEventListener("click", () => {
-  showGateStep("student-info");
+document.getElementById("gate-guest-code-back-btn").addEventListener("click", () => {
+  localStorage.removeItem(STORAGE_KEY_ROLE);
+  applyGate();
 });
 
 /* ---------------- Chatbot toggle ---------------- */
@@ -2340,7 +2166,6 @@ document.getElementById("chatbot-close-btn").addEventListener("click", () => { c
 /* ---------------- Init ---------------- */
 applyStaticI18n();
 initLangSwitch();
-initAbilityBar();
 renderNav();
 refreshKeyStatusUI();
 refreshUnlockStatusUI();

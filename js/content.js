@@ -1124,9 +1124,6 @@ const MAGNETIC_EKSPERIMEN = {
     replicateCount: 3,
     replicateLabel: "Δm (g)",
     derivedLabel: "F = Δm×g (N)",
-    // F = (Δm/1000) × 9,81  ->  faktor pengali terhadap rata-rata Δm (g). Dipakai
-    // tabel interaktif (app.js) DAN kolom turunan di spreadsheet (Code.gs).
-    derivedFactor: 9.81 / 1000,
     context: "Eksperimen Current Balance: kawat berarus I diletakkan tegak lurus medan sepasang magnet di atas neraca timbang elektronik. Gaya magnetik F = BIL terbaca sebagai perubahan massa Δm pada neraca (F = Δm/1000 × 9,81). Data yang valid: F harus naik kira-kira LINEAR terhadap I dan melalui/dekat titik asal (I=0 -> F=0); tiga pembacaan ulangan (Δm₁/Δm₂/Δm₃) pada arus yang sama seharusnya saling berdekatan (bukan tersebar jauh); rapat fluks magnet sekolah (gradien grafik F-I dibagi panjang L) tipikal ada di kisaran 0,1-0,5 T."
   }
 };
@@ -1590,6 +1587,103 @@ const MAGNETIC_EKSPERIMEN_CHECK_EN = [
     explanation: "The reaction force on the magnet is read as a change in balance reading, calculated as F = Δm × g." }
 ];
 
+/* ============================================================
+   Praktikum Virtual: Neraca Arus (Current Balance) - untuk tab Lab
+   Simulasi Virtual (BUKAN tab Eksperimen).
+   ------------------------------------------------------------
+   Eksperimen TAMBAHAN, khusus untuk sekolah yang TIDAK punya alat
+   sederhana MAUPUN alat lab (neraca timbang elektronik) untuk praktikum
+   Current Balance di MAGNETIC_EKSPERIMEN di atas. Langkah kerja, variabel,
+   dan struktur tabel data di sini dibuat PERSIS mengikuti LKPD 2 (Modul
+   Ajar, Bagian 11, "Praktikum Current Balance - Pertemuan 2": 2a prediksi
+   bentuk grafik F-I, 2b panjang L + tabel I/Δm (3 ulangan)/F, 2c gradien
+   & B serta kesimpulan) dan prosedur eksperimen nyata di atas - satu-
+   satunya beda adalah arus & pembacaan neraca disimulasikan di browser
+   (bukan generatif AI, jadi TIDAK butuh API key ataupun koneksi ke
+   backend sama sekali: murni JS di klien, data tersimpan lokal di
+   browser siswa masing-masing lewat localStorage).
+   Dirender oleh renderVirtualLabHTML()/wireVirtualLab() di js/app.js.
+   ============================================================ */
+const MAGNETIC_VIRTUAL_LAB = {
+  title: "Praktikum Virtual: Neraca Arus (Current Balance)",
+  intro: `
+    <p class="muted">Aktivitas ini untuk sekolah yang <strong>belum punya neraca timbang elektronik
+    maupun alat sederhana</strong> (loop kawat/aluminium foil) untuk praktikum Current Balance di tab
+    Eksperimen. Simulasi ini meniru alat, langkah kerja, dan tabel data LKPD 2 pada eksperimen nyata
+    tersebut - kamu tetap "mengukur", mencatat, membuat grafik, dan menghitung $B$ sendiri, hanya saja
+    arus dan neraca yang dipakai berupa alat virtual di layar, bukan alat fisik sungguhan.</p>
+
+    <h4>Tujuan</h4>
+    <p>Sama seperti eksperimen nyata: memverifikasi $F = BIL$ dan menentukan rapat fluks magnetik $B$
+    sepasang magnet virtual dari data hasil "pengukuran"mu sendiri.</p>
+
+    <h4>Cara Menggunakan Alat Virtual</h4>
+    <ol>
+      <li>Panjang magnet $L$ pada kit virtual ini <strong>sudah ditentukan</strong> (lihat angka di
+      bawah) - catat nilai ini di bagian 2b, persis seperti kamu mencatat hasil ukur $L$ dengan
+      penggaris pada eksperimen nyata.</li>
+      <li>Pilih nilai arus $I$ pada menu di bawah, lalu klik <strong>"Baca Neraca"</strong> untuk
+      mensimulasikan pembacaan neraca elektronik (nilainya sedikit berbeda-beda tiap kali dibaca, meniru
+      fluktuasi kecil pada alat sungguhan) - hasilnya otomatis masuk ke tabel pada kolom arus yang
+      sesuai.</li>
+      <li>Ulangi pembacaan sebanyak 3 kali untuk tiap nilai arus (mengisi $\\Delta m_1$, $\\Delta m_2$,
+      $\\Delta m_3$), lalu pindah ke nilai arus berikutnya, sampai seluruh baris tabel terisi. Grafik
+      $F$-$I$ di bawah tabel akan otomatis tergambar dari datamu.</li>
+      <li>Hitung sendiri gradien grafik dan nilai $B$ (persis seperti eksperimen nyata: $B$ = gradien
+      $\\div L$), lalu bandingkan dengan hasil perhitungan otomatis untuk mengecek pekerjaanmu.</li>
+    </ol>
+  `,
+  dataTable: {
+    independentLabel: "I (A)",
+    independentValues: [0.50, 1.00, 1.50, 2.00, 2.50],
+    replicateCount: 3,
+    replicateLabel: "Δm (g)",
+    derivedLabel: "F = Δm×g (N)"
+  },
+  // Alat virtual: L tetap/diberikan (bukan diukur siswa, karena tidak ada
+  // alat fisik); B "sungguhan" dirandom sekali per siswa per topik (lihat
+  // getVirtualLabTrueB() di app.js) supaya tiap siswa/kelompok mendapat
+  // data unik, sama seperti tiap set magnet Magnadur sungguhan berbeda-beda.
+  apparatus: {
+    lengthM: 0.045,
+    bTrueMin: 0.15,
+    bTrueMax: 0.35,
+    noiseFrac: 0.05,
+    noiseAbsG: 0.02
+  }
+};
+
+const MAGNETIC_VIRTUAL_LAB_EN = {
+  title: "Virtual Practical: Current Balance",
+  intro: `
+    <p class="muted">This activity is for schools that <strong>don't yet have an electronic top-pan
+    balance or the simple apparatus</strong> (wire loop/aluminium foil) for the Current Balance practical
+    in the Experiment tab. This simulation mirrors the apparatus, procedure, and data table of LKPD 2 from
+    that real experiment - you still "measure", record, graph, and calculate $B$ yourself; only the
+    current and balance you use are virtual on-screen instruments, not real physical ones.</p>
+
+    <h4>Objective</h4>
+    <p>Same as the real experiment: verify $F = BIL$ and determine the magnetic flux density $B$ of a
+    virtual pair of magnets from your own "measurement" data.</p>
+
+    <h4>How to Use the Virtual Apparatus</h4>
+    <ol>
+      <li>The magnet length $L$ of this virtual kit is <strong>already fixed</strong> (see the number
+      below) - record this value in field 2b, just like you would record a measured $L$ with a ruler in
+      the real experiment.</li>
+      <li>Pick a current $I$ value from the menu below, then click <strong>"Read Balance"</strong> to
+      simulate an electronic balance reading (the value varies slightly each time, mirroring small
+      fluctuations on a real instrument) - the result is automatically placed in the matching current row
+      of the table.</li>
+      <li>Repeat the reading 3 times for each current value (filling in $\\Delta m_1$, $\\Delta m_2$,
+      $\\Delta m_3$), then move to the next current value, until the whole table is filled in. The F-I
+      graph below the table is plotted automatically from your data.</li>
+      <li>Calculate the graph's gradient and the value of $B$ yourself (just like the real experiment:
+      $B$ = gradient $\\div L$), then compare with the automatic calculation to check your work.</li>
+    </ol>
+  `
+};
+
 (function attachMagneticFieldsContent() {
   const topic = TOPICS.find(t => t.id === "magnetic-fields");
   topic.desc = { id: topic.desc, en: MAGNETIC_DESC_EN };
@@ -1602,6 +1696,15 @@ const MAGNETIC_EKSPERIMEN_CHECK_EN = [
     // renderEksperimen() di js/app.js membaca currentTopic.eksperimen.dataTable,
     // bukan MAGNETIC_EKSPERIMEN.dataTable langsung.
     dataTable: MAGNETIC_EKSPERIMEN.dataTable
+  };
+  // Eksperimen tambahan untuk tab Lab Simulasi Virtual (lihat komentar
+  // panjang di MAGNETIC_VIRTUAL_LAB di atas) - dibaca oleh
+  // setupVirtualLabForTopic() di js/app.js lewat currentTopic.virtualLab.
+  topic.virtualLab = {
+    title: { id: MAGNETIC_VIRTUAL_LAB.title, en: MAGNETIC_VIRTUAL_LAB_EN.title },
+    intro: { id: MAGNETIC_VIRTUAL_LAB.intro, en: MAGNETIC_VIRTUAL_LAB_EN.intro },
+    dataTable: MAGNETIC_VIRTUAL_LAB.dataTable,
+    apparatus: MAGNETIC_VIRTUAL_LAB.apparatus
   };
   topic.latihan = MAGNETIC_LATIHAN.map((q, i) => {
     const qEN = MAGNETIC_LATIHAN_EN[i] || {};
