@@ -44,7 +44,7 @@ const SESSION_KEY_LANG_RESTORE = "physicsSandbox.langRestoreTopic";
 const I18N_STRINGS = {
   /* ---------------- Onboarding gate ---------------- */
   "gate.step1.title": { id: "Langkah 1: Siapkan API key Gemini gratismu", en: "Step 1: Set up your free Gemini API key" },
-  "gate.step1.desc": { id: "Situs ini memakai AI (Google Gemini) untuk Lab Simulasi Virtual dan Tutor Fisika. Masukkan API key Gemini <strong>milikmu sendiri</strong> dulu, gratis, tersimpan hanya di browser ini, dan tidak pernah dikirim ke siapa pun selain langsung ke Google.", en: "This site uses AI (Google Gemini) for the Virtual Simulation Lab and Physics Tutor. First enter <strong>your own</strong> Gemini API key - it's free, stored only in this browser, and never sent to anyone except directly to Google." },
+  "gate.step1.desc": { id: "Situs ini memakai AI (Google Gemini) untuk Makerspace dan Tutor Fisika. Masukkan API key Gemini <strong>milikmu sendiri</strong> dulu, gratis, tersimpan hanya di browser ini, dan tidak pernah dikirim ke siapa pun selain langsung ke Google.", en: "This site uses AI (Google Gemini) for Makerspace and the Physics Tutor. First enter <strong>your own</strong> Gemini API key - it's free, stored only in this browser, and never sent to anyone except directly to Google." },
   "gate.step1.li1": { id: "<strong>Buka Google AI Studio</strong> dan masuk dengan akun Google-mu.", en: "<strong>Open Google AI Studio</strong> and sign in with your Google account." },
   "gate.step1.li1.link": { id: "Buka aistudio.google.com/apikey", en: "Open aistudio.google.com/apikey" },
   "gate.step1.li2": { id: "Klik <strong>Create API key</strong>, lalu salin key yang muncul (diawali huruf <code>AIza...</code>).", en: "Click <strong>Create API key</strong>, then copy the key that appears (it starts with <code>AIza...</code>)." },
@@ -105,7 +105,7 @@ const I18N_STRINGS = {
 
   /* ---------------- Welcome panel ---------------- */
   "welcome.title": { id: "Selamat datang di Physics Sandbox", en: "Welcome to Physics Sandbox" },
-  "welcome.intro": { id: "Pilih topik di sebelah kiri untuk mulai belajar. Setiap topik punya empat bagian: <strong>Materi Belajar</strong>, <strong>Eksperimen</strong>, <strong>Latihan Soal</strong>, dan <strong>Lab Simulasi Virtual</strong> tempat kamu bisa membuat simulasi fisikamu sendiri dengan bantuan AI.", en: "Pick a topic on the left to start learning. Each topic has four sections: <strong>Learning Material</strong>, <strong>Experiments</strong>, <strong>Practice Questions</strong>, and <strong>Virtual Simulation Lab</strong> where you can build your own physics simulation with AI's help." },
+  "welcome.intro": { id: "Pilih topik di sebelah kiri untuk mulai belajar. Setiap topik punya empat bagian: <strong>Materi Belajar</strong>, <strong>Eksperimen</strong>, <strong>Latihan Soal</strong>, dan <strong>Makerspace</strong> tempat kamu bisa membuat simulasi fisikamu sendiri dengan bantuan AI.", en: "Pick a topic on the left to start learning. Each topic has four sections: <strong>Learning Material</strong>, <strong>Experiments</strong>, <strong>Practice Questions</strong>, and <strong>Makerspace</strong> where you can build your own physics simulation with AI's help." },
   "welcome.legend": { id: "Topik yang sudah lengkap ditandai <span class=\"badge badge-ready\">Siap</span>, topik lain masih <span class=\"badge badge-soon\">Segera</span> - struktur sudah disiapkan, tinggal diisi kontennya.", en: "Completed topics are marked <span class=\"badge badge-ready\">Ready</span>; other topics are still <span class=\"badge badge-soon\">Coming soon</span> - the structure is ready, content is on the way." },
   "badge.ready": { id: "Siap", en: "Ready" },
   "badge.soon": { id: "Segera", en: "Coming soon" },
@@ -114,13 +114,18 @@ const I18N_STRINGS = {
   "tab.materi": { id: "Materi Belajar", en: "Learning Material" },
   "tab.eksperimen": { id: "Eksperimen", en: "Experiments" },
   "tab.latihan": { id: "Latihan Soal", en: "Practice Questions" },
-  "tab.lab": { id: "Lab Simulasi Virtual", en: "Virtual Simulation Lab" },
+  "tab.lab": { id: "Makerspace", en: "Makerspace" },
   "progress.continueto": { id: "Lanjut ke", en: "Continue to" },
   "progress.finish": { id: "Topik selesai - Lanjut ke Topik Berikutnya", en: "Topic complete - Continue to Next Topic" },
   "toast.tablocked": { id: "Selesaikan tab sebelumnya dulu supaya sesuai urutan belajar, atau masukkan Kode Eksplorasi Bebas dari guru.", en: "Finish the previous tab first to follow the learning order, or enter a Free Exploration Code from your teacher." },
   "toast.classlocked": { id: "Ada sesi kelas aktif - ikuti aktivitas yang sedang ditentukan guru dulu.", en: "A class session is active - follow the activity your teacher set first." },
 
-  /* ---------------- Lab Simulasi Virtual ---------------- */
+  /* ---------------- Sub-tab pilihan varian Eksperimen ---------------- */
+  "eksvariant.virtual.label": { id: "Simulasi Virtual", en: "Virtual Simulation" },
+  "eksvariant.sederhana.label": { id: "Alat Sederhana", en: "Simple Apparatus" },
+  "eksvariant.laboratorium.label": { id: "Alat Laboratorium", en: "Laboratory Apparatus" },
+
+  /* ---------------- Makerspace ---------------- */
   "lab.keybanner.text": { id: "Kamu belum memasukkan API key Gemini pribadi, jadi Generate belum bisa jalan.", en: "You haven't entered your personal Gemini API key yet, so Generate won't work." },
   "lab.keybanner.btn": { id: "Atur API Key", en: "Set API Key" },
   "lab.card1.title": { id: "Generator Prompt Terstruktur", en: "Structured Prompt Generator" },
@@ -155,7 +160,7 @@ const I18N_STRINGS = {
   "lab.generate.success": { id: "Simulasi berhasil dibuat.", en: "Simulation created successfully." },
   "lab.generate.failed": { id: "Gagal generate: ", en: "Generate failed: " },
   "lab.generate.failedsuffix": { id: " - coba lagi, atau cek README bagian troubleshooting.", en: " - try again, or check the troubleshooting section of the README." },
-  "lab.demo.active": { id: "Mode Demo aktif: menampilkan simulasi contoh yang sudah disiapkan (bukan hasil AI sesungguhnya), sekadar untuk melihat alur Lab Simulasi Virtual.", en: "Demo Mode active: showing a pre-made sample simulation (not real AI output), just to see how the Virtual Simulation Lab flow works." },
+  "lab.demo.active": { id: "Mode Demo aktif: menampilkan simulasi contoh yang sudah disiapkan (bukan hasil AI sesungguhnya), sekadar untuk melihat alur Makerspace.", en: "Demo Mode active: showing a pre-made sample simulation (not real AI output), just to see how the Makerspace flow works." },
 
   "lab.card3.title": { id: "Preview Simulasi", en: "Simulation Preview" },
   "lab.rerun.btn": { id: "Jalankan Ulang", en: "Run Again" },
@@ -184,7 +189,7 @@ const I18N_STRINGS = {
   "check.noscript": { id: "Kode tidak mengandung <script> sama sekali, jadi animasi/perhitungan tidak akan berjalan.", en: "The code has no <script> tag at all, so animations/calculations won't run." },
   "check.unbalancedbraces": { id: "Kode JavaScript sepertinya tidak lengkap/rusak (kurung kurawal { } tidak seimbang), kemungkinan animasi atau perhitungan tidak akan berjalan.", en: "The JavaScript code looks incomplete/broken (unbalanced { } braces), so animations or calculations may not run." },
 
-  "content.comingsoon": { id: "Konten {{section}} untuk topik ini belum diisi. Strukturnya sudah siap di <code>js/content.js</code>, tinggal ditambahkan mengikuti contoh topik <strong>Kinematics</strong>. Sementara itu, tab <strong>Lab Simulasi Virtual</strong> tetap bisa dicoba untuk topik ini.", en: "The {{section}} content for this topic isn't filled in yet. The structure is ready in <code>js/content.js</code>, just needs adding following the <strong>Kinematics</strong> topic example. Meanwhile, the <strong>Virtual Simulation Lab</strong> tab can still be tried for this topic." },
+  "content.comingsoon": { id: "Konten {{section}} untuk topik ini belum diisi. Strukturnya sudah siap di <code>js/content.js</code>, tinggal ditambahkan mengikuti contoh topik <strong>Kinematics</strong>. Sementara itu, tab <strong>Makerspace</strong> tetap bisa dicoba untuk topik ini.", en: "The {{section}} content for this topic isn't filled in yet. The structure is ready in <code>js/content.js</code>, just needs adding following the <strong>Kinematics</strong> topic example. Meanwhile, the <strong>Makerspace</strong> tab can still be tried for this topic." },
   "content.section.materi": { id: "materi belajar", en: "learning material" },
   "content.section.eksperimen": { id: "eksperimen", en: "experiment" },
   "content.section.latihan": { id: "latihan soal", en: "practice question" },
@@ -217,7 +222,7 @@ const I18N_STRINGS = {
   "settings.apikeylabel": { id: "API key Gemini pribadimu", en: "Your personal Gemini API key" },
   "settings.apikeynote": { id: "Tersimpan di browser ini saja, dikirim langsung ke Google setiap kali kamu menekan Generate. Belum punya key? <a href=\"https://aistudio.google.com/apikey\" target=\"_blank\" rel=\"noopener\">Buat gratis di Google AI Studio</a>.", en: "Stored only in this browser, sent directly to Google every time you press Generate. Don't have a key yet? <a href=\"https://aistudio.google.com/apikey\" target=\"_blank\" rel=\"noopener\">Get one free at Google AI Studio</a>." },
   "settings.unlock.summary": { id: "Kode Eksplorasi Bebas (dari guru)", en: "Free Exploration Code (from teacher)" },
-  "settings.unlock.desc": { id: "Kamu boleh mulai dari topik mana saja, tapi di dalam tiap topik, tab (Materi -> Eksperimen -> Latihan Soal -> Lab Simulasi) tetap dibuka bertahap mengikuti urutan belajar. Punya kode khusus dari guru untuk menjelajah bebas tanpa urutan (mis. eksplorasi mandiri di rumah)? Masukkan di sini.", en: "You can start from any topic, but within each topic the tabs (Material -> Experiments -> Practice Questions -> Simulation Lab) still unlock in learning order. Have a special code from your teacher to explore freely without that order (e.g. independent study at home)? Enter it here." },
+  "settings.unlock.desc": { id: "Kamu boleh mulai dari topik mana saja, tapi di dalam tiap topik, tab (Materi -> Eksperimen -> Latihan Soal -> Makerspace) tetap dibuka bertahap mengikuti urutan belajar. Punya kode khusus dari guru untuk menjelajah bebas tanpa urutan (mis. eksplorasi mandiri di rumah)? Masukkan di sini.", en: "You can start from any topic, but within each topic the tabs (Material -> Experiments -> Practice Questions -> Makerspace) still unlock in learning order. Have a special code from your teacher to explore freely without that order (e.g. independent study at home)? Enter it here." },
   "settings.unlock.placeholder": { id: "Masukkan kode dari guru", en: "Enter the code from your teacher" },
   "settings.unlock.btn": { id: "Buka Kunci", en: "Unlock" },
   "settings.unlock.on": { id: "Aktif - semua topik & tab sudah terbuka bebas di perangkat ini.", en: "Active - all topics & tabs are freely unlocked on this device." },
@@ -272,7 +277,7 @@ const I18N_STRINGS = {
   "classsession.wrongcode": { id: "Kode salah, atau sesi belum/sudah tidak aktif. Tanyakan gurumu.", en: "Wrong code, or the session isn't active anymore. Ask your teacher." },
   "classsession.connectfailed": { id: "Gagal terhubung ke server: {{err}}", en: "Couldn't connect to the server: {{err}}" },
 
-  /* ---------------- Generator prompt AI (Lab Simulasi Virtual) ---------------- */
+  /* ---------------- Generator prompt AI (Makerspace) ---------------- */
   "promptgen.header": { id: "Buatlah SATU file HTML lengkap dan mandiri (HTML, CSS, dan JavaScript semuanya inline dalam satu file, TANPA dependensi/CDN eksternal) yang berisi simulasi fisika interaktif tentang topik \"{{topic}}\", khususnya konsep: {{concept}}.\n\n", en: "Create ONE complete, self-contained HTML file (HTML, CSS, and JavaScript all inline in a single file, with NO external dependencies/CDNs) containing an interactive physics simulation about the topic \"{{topic}}\", specifically the concept: {{concept}}.\n\n" },
   "promptgen.langdirective": { id: "Tulis SEMUA teks yang tampil di layar (label, judul, satuan, tombol, penjelasan) dalam Bahasa Indonesia.\n\n", en: "Write ALL on-screen text (labels, titles, units, buttons, explanations) in English.\n\n" },
   "promptgen.mainfocus": { id: "PENTING: konsep fisika di atas (\"{{concept}}\") adalah topik UTAMA dan SATU-SATUNYA untuk simulasi ini. Semua kontrol, animasi, grafik, dan penjelasan di dalam simulasi harus tentang konsep ini saja.\n\n", en: "IMPORTANT: the physics concept above (\"{{concept}}\") is the ONE AND ONLY main topic for this simulation. All controls, animations, graphs, and explanations inside the simulation must be about this concept only.\n\n" },
@@ -326,12 +331,12 @@ const I18N_STRINGS = {
 
   /* ---------------- Gate Eksperimen (self-check + konfirmasi guru) ---------------- */
   "gate.eksperimen.title": { id: "Konfirmasi Pemahaman: Eksperimen", en: "Understanding Check: Experiment" },
-  "gate.eksperimen.desc": { id: "Jawab pertanyaan tentang hubungan antar-variabel &amp; pengelolaan data pada eksperimen ini. Kalau semua benar, permintaanmu dikirim ke guru untuk dikonfirmasi sebelum Latihan Soal dan Lab Simulasi Virtual terbuka.", en: "Answer these questions about the relationship between variables and data handling in this experiment. If all correct, your request is sent to your teacher for confirmation before Practice Questions and the Virtual Simulation Lab unlock." },
+  "gate.eksperimen.desc": { id: "Jawab pertanyaan tentang hubungan antar-variabel &amp; pengelolaan data pada eksperimen ini. Kalau semua benar, permintaanmu dikirim ke guru untuk dikonfirmasi sebelum Latihan Soal dan Makerspace terbuka.", en: "Answer these questions about the relationship between variables and data handling in this experiment. If all correct, your request is sent to your teacher for confirmation before Practice Questions and Makerspace unlock." },
   "gate.eksperimen.fallback": { id: "Saya sudah menyelesaikan eksperimen ini dan siap dikonfirmasi guru.", en: "I have completed this experiment and I'm ready for teacher confirmation." },
   "gate.eksperimen.submitbtn": { id: "Periksa &amp; Kirim ke Guru", en: "Check &amp; Send to Teacher" },
   "gate.eksperimen.autosummary": { id: "Siswa menjawab benar semua pertanyaan konfirmasi Eksperimen.", en: "Student answered all Experiment confirmation questions correctly." },
 
-  /* ---------------- Gate Lab Simulasi (refleksi + konfirmasi guru) ---------------- */
+  /* ---------------- Gate Makerspace (refleksi + konfirmasi guru) ---------------- */
   "lab.reflection.title": { id: "Refleksi &amp; Validasi Simulasi (untuk konfirmasi guru)", en: "Reflection &amp; Simulation Validation (for teacher confirmation)" },
   "lab.reflection.desc": { id: "Sebelum topik ini ditandai selesai, jelaskan singkat apakah simulasi yang kamu hasilkan sudah sesuai hukum/konsep fisika topik ini dan bagaimana kamu mengeceknya (misalnya coba nilai ekstrem/nol pada variabelnya).", en: "Before this topic is marked complete, briefly explain whether the simulation you produced matches this topic's physics laws/concepts and how you checked it (e.g. trying extreme/zero values for its variables)." },
   "lab.reflection.placeholder": { id: "misal: saya coba set arus = 0, gaya pada simulasi juga otomatis jadi 0, sesuai rumus F = BIL...", en: "e.g. I tried setting current = 0, and the force in the simulation also became 0, matching F = BIL..." },
@@ -340,13 +345,13 @@ const I18N_STRINGS = {
 
   /* ---------------- Notifikasi & banner status gate (siswa) ---------------- */
   "gate.submitted.toast": { id: "Terkirim! Menunggu konfirmasi guru.", en: "Sent! Waiting for teacher confirmation." },
-  "gate.eksperimen.approved.toast": { id: "Guru sudah mengonfirmasi Eksperimen-mu! Latihan Soal &amp; Lab Simulasi kini terbuka.", en: "Your teacher confirmed your Experiment! Practice Questions &amp; the Simulation Lab are now unlocked." },
+  "gate.eksperimen.approved.toast": { id: "Guru sudah mengonfirmasi Eksperimen-mu! Latihan Soal &amp; Makerspace kini terbuka.", en: "Your teacher confirmed your Experiment! Practice Questions &amp; Makerspace are now unlocked." },
   "gate.lab.approved.toast": { id: "Guru sudah mengonfirmasi simulasimu - topik ini ditandai selesai!", en: "Your teacher confirmed your simulation - this topic is now marked complete!" },
   "gate.eksperimen.rejected.toast": { id: "Guru meminta kamu memperbaiki/mengulang bagian Eksperimen. Lihat catatan guru di bawah.", en: "Your teacher asked you to redo/fix the Experiment part. See the teacher's note below." },
   "gate.lab.rejected.toast": { id: "Guru meminta kamu memperbaiki simulasi/refleksimu. Lihat catatan guru di bawah.", en: "Your teacher asked you to improve your simulation/reflection. See the teacher's note below." },
   "gate.banner.pending.eksperimen": { id: "Menunggu konfirmasi guru untuk bagian Eksperimen...", en: "Waiting for teacher confirmation on the Experiment part..." },
   "gate.banner.pending.lab": { id: "Menunggu konfirmasi guru untuk refleksi &amp; simulasi ini...", en: "Waiting for teacher confirmation on this reflection &amp; simulation..." },
-  "gate.banner.approved.eksperimen": { id: "Dikonfirmasi guru - Latihan Soal &amp; Lab Simulasi Virtual terbuka.", en: "Confirmed by teacher - Practice Questions &amp; Virtual Simulation Lab are unlocked." },
+  "gate.banner.approved.eksperimen": { id: "Dikonfirmasi guru - Latihan Soal &amp; Makerspace terbuka.", en: "Confirmed by teacher - Practice Questions &amp; Makerspace are unlocked." },
   "gate.banner.approved.lab": { id: "Dikonfirmasi guru - topik ini selesai.", en: "Confirmed by teacher - this topic is complete." },
   "gate.banner.rejected.eksperimen": { id: "Guru meminta bagian Eksperimen diperbaiki/diulang.", en: "Teacher asked for the Experiment part to be redone/fixed." },
   "gate.banner.rejected.lab": { id: "Guru meminta simulasi/refleksi ini diperbaiki.", en: "Teacher asked for this simulation/reflection to be improved." },
@@ -355,10 +360,10 @@ const I18N_STRINGS = {
 
   /* ---------------- Panel Guru: Konfirmasi Menunggu ---------------- */
   "teacher.gate.title": { id: "Konfirmasi Menunggu", en: "Pending Confirmations" },
-  "teacher.gate.desc": { id: "Siswa yang sudah menjawab benar pertanyaan konfirmasi Eksperimen, atau mengirim refleksi Lab Simulasi, muncul di sini menunggu keputusanmu. Diperbarui otomatis bersamaan dengan Progres Siswa (~8 detik).", en: "Students who answered the Experiment confirmation questions correctly, or submitted a Simulation Lab reflection, appear here waiting for your decision. Updates automatically together with Student Progress (~8s)." },
+  "teacher.gate.desc": { id: "Siswa yang sudah menjawab benar pertanyaan konfirmasi Eksperimen, atau mengirim refleksi Makerspace, muncul di sini menunggu keputusanmu. Diperbarui otomatis bersamaan dengan Progres Siswa (~8 detik).", en: "Students who answered the Experiment confirmation questions correctly, or submitted a Makerspace reflection, appear here waiting for your decision. Updates automatically together with Student Progress (~8s)." },
   "teacher.gate.empty": { id: "Tidak ada yang menunggu konfirmasi saat ini.", en: "No one is waiting for confirmation right now." },
   "teacher.gate.stage.eksperimen": { id: "Eksperimen", en: "Experiment" },
-  "teacher.gate.stage.lab": { id: "Lab Simulasi", en: "Simulation Lab" },
+  "teacher.gate.stage.lab": { id: "Makerspace", en: "Makerspace" },
   "teacher.gate.approve.btn": { id: "Setujui", en: "Approve" },
   "teacher.gate.reject.btn": { id: "Tolak", en: "Reject" },
   "teacher.gate.reject.prompt": { id: "Catatan untuk siswa (opsional, kosongkan kalau tidak perlu):", en: "Note for the student (optional, leave blank if not needed):" },
@@ -382,7 +387,7 @@ const I18N_STRINGS = {
   "eksdata.networkerror": { id: "Gagal terhubung ke server, periksa koneksi internetmu dan coba lagi.", en: "Couldn't connect to the server, check your internet connection and try again." },
   "toast.eksdata.required": { id: "Isi & simpan dulu tabel data pengamatan di atas sebelum melanjutkan.", en: "Fill in & save the observation data table above before continuing." },
 
-  /* ---------------- Praktikum Virtual (tab Lab Simulasi Virtual, tanpa alat) ---------------- */
+  /* ---------------- Praktikum Virtual (varian "Simulasi Virtual" pada sub-tab Eksperimen) ---------------- */
   "vlab.badgelabel": { id: "Eksperimen Tambahan - Tanpa Alat Lab", en: "Additional Experiment - No Lab Equipment Needed" },
   "vlab.apparatus.length": { id: "Panjang magnet virtual (diberikan)", en: "Virtual magnet length (given)" },
   "vlab.current.label": { id: "2b. Atur arus (I)", en: "2b. Set current (I)" },
@@ -397,8 +402,7 @@ const I18N_STRINGS = {
   "vlab.checkneeddata": { id: "Isi minimal 3 baris data pada tabel dulu sebelum mengecek.", en: "Fill in at least 3 rows of table data before checking." },
   "vlab.checkresult": { id: "Perhitungan otomatis dari data tabelmu: gradien ≈ {{grad}} T·m, sehingga B ≈ {{b}} T. Bandingkan dengan hasil perhitungan manualmu di atas.", en: "Automatic calculation from your table data: gradient ≈ {{grad}} T·m, so B ≈ {{b}} T. Compare this with your manual calculation above." },
   "vlab.conclusion.label": { id: "2c. Kesimpulan dan sumber kesalahan", en: "2c. Conclusion and sources of error" },
-  "vlab.savebtn": { id: "Simpan Data (lokal di browser ini)", en: "Save Data (local to this browser)" },
-  "vlab.saved": { id: "Tersimpan di browser ini. Data ini TIDAK dikirim ke server mana pun.", en: "Saved to this browser. This data is NOT sent to any server." },
+  "vlab.savebtn": { id: "Simpan Data", en: "Save Data" },
   "vlab.empty": { id: "Isi prediksi (2a) dan minimal satu baris data tabel dulu sebelum menyimpan.", en: "Fill in your prediction (2a) and at least one row of table data before saving." },
   "vlab.graph.axis.i": { id: "I (A)", en: "I (A)" },
   "vlab.graph.axis.f": { id: "F (N)", en: "F (N)" },

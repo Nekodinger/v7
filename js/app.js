@@ -14,12 +14,11 @@ const STORAGE_KEY_STUDENT_CLASS = "physicsSandbox.studentClass";
 // untuk mewajibkan siswa mengisi & menyimpan tabel dulu sebelum tombol
 // "Lanjut ke Latihan Soal" boleh membuka pertanyaan konfirmasi Eksperimen.
 const STORAGE_KEY_EKSDATA_SAVED = "physicsSandbox.eksperimenDataSaved";
-// Praktikum Virtual (tab Lab, tanpa alat) - lihat renderVirtualLabHTML() dkk
-// di bawah. Sengaja HANYA localStorage (tidak pernah di-POST ke backend
-// mana pun) supaya fitur ini tidak butuh perubahan apa pun pada
-// apps-script/Code.gs ataupun DEFAULT_BACKEND_URL.
+// Varian "virtual" eksperimen (tab Eksperimen) - lihat renderVirtualLabHTML()
+// dkk di bawah. Hanya B "sungguhan" (seed randomisasi apparatus virtual) yang
+// disimpan lokal di sini; data hasil percobaan siswa sendiri dikirim ke
+// backend seperti varian sederhana/laboratorium (lihat wireVirtualLab()).
 const STORAGE_KEY_VLAB_TRUEB = "physicsSandbox.virtualLabTrueB";
-const STORAGE_KEY_VLAB_DATA = "physicsSandbox.virtualLabData";
 let currentTopic = null;
 let lastGeneratedHTML = "";
 let editCount = 0;
@@ -1086,8 +1085,11 @@ document.getElementById("progress-next-btn").addEventListener("click", () => {
   if (activeTab === "eksperimen" && !alreadyPassed) {
     // Kalau topik ini punya tabel data interaktif, siswa WAJIB mengisi &
     // menyimpannya minimal sekali dulu sebelum pertanyaan konfirmasi
-    // Eksperimen boleh dibuka - lihat wireEksperimenDataTable().
-    const needsData = currentTopic.eksperimen && currentTopic.eksperimen.dataTable;
+    // Eksperimen boleh dibuka - lihat wireEksperimenDataTable(). Topik dengan
+    // 3 varian pilihan (lihat currentTopic.eksperimen.variants) juga wajib -
+    // menyimpan SALAH SATU varian saja sudah cukup (lihat setEksperimenDataSavedFlag,
+    // yang per-topik, bukan per-varian).
+    const needsData = currentTopic.eksperimen && (currentTopic.eksperimen.dataTable || currentTopic.eksperimen.variants);
     if (needsData && !getEksperimenDataSavedFlag(currentTopic.id)) {
       showToast(t("toast.eksdata.required"));
       return;
@@ -1120,22 +1122,94 @@ function renderMateri() {
 }
 
 /* ---------------- Panel: Eksperimen ---------------- */
+// Sebagian topik (mis. Magnetic Fields) punya 3 PILIHAN eksperimen sekaligus
+// (Virtual/Sederhana/Laboratorium - lihat currentTopic.eksperimen.variants di
+// js/content.js) supaya sekolah bisa memilih sesuai alat yang tersedia,
+// ditampilkan lewat sub-tab pilihan (pill switcher). Topik lain (Kinematics,
+// Temperature, Ideal Gases, Thermodynamics) TIDAK punya .variants sama sekali
+// dan tetap memakai jalur lama (satu eksperimen langsung) TANPA PERUBAHAN.
+let currentEksVariantKey = null;
+
 function renderEksperimen() {
   const panel = document.getElementById("panel-eksperimen");
   if (currentTopic.status === "ready" && currentTopic.eksperimen) {
     const ex = currentTopic.eksperimen;
-    panel.innerHTML = pjblStageHTML("eksperimen") +
-      `<div id="eksperimen-gate-banner" class="gate-banner" hidden></div>` +
-      `<h3>${trContent(ex.title)}</h3>${trContent(ex.intro)}` +
-      (ex.simHTML ? `<div class="sim-embed"><iframe sandbox="allow-scripts" srcdoc="${escapeAttr(ex.simHTML)}"></iframe></div>` : "") +
-      (ex.dataTable ? renderEksperimenDataTableHTML(ex.dataTable) : "");
-    renderGateBanner("eksperimen");
-    if (ex.dataTable) wireEksperimenDataTable(ex.dataTable);
+    if (ex.variants) {
+      currentEksVariantKey = ex.defaultVariant || ex.variantOrder[0];
+      panel.innerHTML = pjblStageHTML("eksperimen") +
+        `<div id="eksperimen-gate-banner" class="gate-banner" hidden></div>` +
+        renderEksVariantSwitcherHTML(ex) +
+        `<div id="eks-variant-content"></div>`;
+      renderGateBanner("eksperimen");
+      wireEksVariantSwitcher(ex);
+      renderEksVariantContent(ex, currentEksVariantKey);
+    } else {
+      panel.innerHTML = pjblStageHTML("eksperimen") +
+        `<div id="eksperimen-gate-banner" class="gate-banner" hidden></div>` +
+        `<h3>${trContent(ex.title)}</h3>${trContent(ex.intro)}` +
+        (ex.simHTML ? `<div class="sim-embed"><iframe sandbox="allow-scripts" srcdoc="${escapeAttr(ex.simHTML)}"></iframe></div>` : "") +
+        (ex.dataTable ? renderEksperimenDataTableHTML(ex.dataTable) : "");
+      renderGateBanner("eksperimen");
+      if (ex.dataTable) wireEksperimenDataTable(ex.dataTable);
+    }
   } else {
     panel.innerHTML = comingSoonHTML("eksperimen");
   }
   if (window.MathJax && window.MathJax.typesetPromise) {
     window.MathJax.typesetPromise([panel]);
+  }
+}
+
+// Sub-tab pilihan (pill switcher) untuk memilih varian eksperimen. Hanya
+// SATU varian yang pernah ada di DOM sekaligus (isi #eks-variant-content
+// diganti total tiap klik pill), jadi elemen di dalamnya (tabel data,
+// tombol simpan, dst.) aman memakai ID yang sama persis di ketiga varian
+// tanpa tabrakan.
+function renderEksVariantSwitcherHTML(ex) {
+  const btns = ex.variantOrder.map(key =>
+    `<button type="button" class="eks-variant-btn" data-variant="${key}">${t("eksvariant." + key + ".label")}</button>`
+  ).join("");
+  return `<div class="eks-variant-switcher">${btns}</div>`;
+}
+
+function wireEksVariantSwitcher(ex) {
+  const panel = document.getElementById("panel-eksperimen");
+  const switcher = panel.querySelector(".eks-variant-switcher");
+  if (!switcher) return;
+  const buttons = Array.from(switcher.querySelectorAll(".eks-variant-btn"));
+  const setActive = (key) => buttons.forEach(b => b.classList.toggle("active", b.dataset.variant === key));
+  setActive(currentEksVariantKey);
+  buttons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const key = btn.dataset.variant;
+      if (key === currentEksVariantKey) return;
+      currentEksVariantKey = key;
+      setActive(key);
+      renderEksVariantContent(ex, key);
+      const content = document.getElementById("eks-variant-content");
+      if (window.MathJax && window.MathJax.typesetPromise && content) {
+        window.MathJax.typesetPromise([content]);
+      }
+    });
+  });
+}
+
+// Render konten satu varian terpilih: varian interaktif (virtual, ditandai
+// variant.interactive === true) memakai UI kaya (tabel+grafik+self-check
+// dari renderVirtualLabHTML/wireVirtualLab); varian lain (sederhana,
+// laboratorium) memakai tabel input manual biasa seperti jalur lama.
+function renderEksVariantContent(ex, key) {
+  const container = document.getElementById("eks-variant-content");
+  if (!container) return;
+  const variant = ex.variants[key];
+  if (!variant) return;
+  if (variant.interactive) {
+    container.innerHTML = renderVirtualLabHTML(variant);
+    wireVirtualLab(currentTopic, variant);
+  } else {
+    container.innerHTML = `<h3>${trContent(variant.title)}</h3>${trContent(variant.intro)}` +
+      (variant.dataTable ? renderEksperimenDataTableHTML(variant.dataTable) : "");
+    if (variant.dataTable) wireEksperimenDataTable(variant.dataTable);
   }
 }
 
@@ -1355,33 +1429,15 @@ function setupLabForTopic() {
     if (banner) { banner.hidden = true; banner.innerHTML = ""; }
   }
 
-  setupVirtualLabForTopic();
 }
 
-/* ---------------- Praktikum Virtual (tab Lab, tanpa alat) ----------------
-   Eksperimen TAMBAHAN untuk topik yang punya currentTopic.virtualLab (lihat
-   MAGNETIC_VIRTUAL_LAB di js/content.js) - opsi bagi sekolah yang belum
-   punya alat sederhana maupun alat lab untuk praktikum terkait. Berbeda dari
-   "Generator Prompt Terstruktur" di bawahnya (yang generatif/AI dan butuh
-   API key + backend), kartu ini MURNI klien: arus & pembacaan neraca
-   disimulasikan dengan JS biasa, data disimpan hanya di localStorage
-   browser siswa - TIDAK PERNAH memanggil backend, jadi tidak menambah
-   ketergantungan apa pun pada apps-script/Code.gs yang sudah ada. */
-function setupVirtualLabForTopic() {
-  const card = document.getElementById("lab-vlab-card");
-  if (!card) return;
-  if (currentTopic.status === "ready" && currentTopic.virtualLab) {
-    card.hidden = false;
-    card.innerHTML = renderVirtualLabHTML(currentTopic.virtualLab);
-    wireVirtualLab(currentTopic);
-    if (window.MathJax && window.MathJax.typesetPromise) {
-      window.MathJax.typesetPromise([card]);
-    }
-  } else {
-    card.hidden = true;
-    card.innerHTML = "";
-  }
-}
+/* ---------------- Praktikum Virtual (varian "virtual" tab Eksperimen) ----------------
+   Salah satu dari 3 varian pilihan eksperimen (lihat currentTopic.eksperimen.variants
+   di js/content.js) - opsi bagi sekolah yang belum punya alat sederhana maupun alat
+   lab untuk praktikum terkait. Arus & pembacaan neraca disimulasikan dengan JS biasa
+   di klien; data hasil percobaan (bukan simulasinya sendiri) dikirim ke backend lewat
+   mode eksperimen_data_save yang sama seperti varian sederhana/laboratorium, supaya
+   guru bisa memantau ketiga varian secara konsisten. */
 
 // B "sungguhan" alat virtual dirandom SEKALI per siswa per topik, lalu
 // disimpan supaya tidak berubah-ubah tiap kali siswa buka ulang topiknya
@@ -1390,24 +1446,11 @@ function getVirtualLabTrueB(topic) {
   let map = {};
   try { map = JSON.parse(localStorage.getItem(STORAGE_KEY_VLAB_TRUEB) || "{}"); } catch (e) { /* abaikan */ }
   if (typeof map[topic.id] === "number" && !isNaN(map[topic.id])) return map[topic.id];
-  const { bTrueMin, bTrueMax } = topic.virtualLab.apparatus;
+  const { bTrueMin, bTrueMax } = topic.eksperimen.variants.virtual.apparatus;
   const b = bTrueMin + Math.random() * (bTrueMax - bTrueMin);
   map[topic.id] = b;
   localStorage.setItem(STORAGE_KEY_VLAB_TRUEB, JSON.stringify(map));
   return b;
-}
-
-function getVirtualLabSavedData(topicId) {
-  try {
-    const map = JSON.parse(localStorage.getItem(STORAGE_KEY_VLAB_DATA) || "{}");
-    return map[topicId] || null;
-  } catch (e) { return null; }
-}
-function setVirtualLabSavedData(topicId, data) {
-  let map = {};
-  try { map = JSON.parse(localStorage.getItem(STORAGE_KEY_VLAB_DATA) || "{}"); } catch (e) { /* abaikan */ }
-  map[topicId] = data;
-  localStorage.setItem(STORAGE_KEY_VLAB_DATA, JSON.stringify(map));
 }
 
 // Simulasi pembacaan neraca (gram): F = B x I x L sungguhan, ditambah noise
@@ -1415,7 +1458,7 @@ function setVirtualLabSavedData(topicId, data) {
 // (meniru fluktuasi neraca elektronik sungguhan), lalu dibulatkan ke 0,01 g
 // mengikuti ketelitian neraca timbang elektronik pada eksperimen nyata.
 function computeVirtualReadingGrams(topic, I) {
-  const { lengthM, noiseFrac, noiseAbsG } = topic.virtualLab.apparatus;
+  const { lengthM, noiseFrac, noiseAbsG } = topic.eksperimen.variants.virtual.apparatus;
   const B = getVirtualLabTrueB(topic);
   const trueF = B * I * lengthM;
   const trueGrams = (trueF / 9.81) * 1000;
@@ -1444,8 +1487,7 @@ function renderVirtualLabHTML(vl) {
   ).join("");
 
   return `
-    <span class="badge badge-soon">${t("vlab.badgelabel")}</span>
-    <h3 style="margin-top:10px;">${trContent(vl.title)}</h3>
+    <h3>${trContent(vl.title)}</h3>
     ${trContent(vl.intro)}
 
     <div class="vlab-apparatus">
@@ -1538,9 +1580,8 @@ function drawVlabGraph() {
   svg.innerHTML = html;
 }
 
-function wireVirtualLab(topic) {
-  const vl = topic.virtualLab;
-  const card = document.getElementById("lab-vlab-card");
+function wireVirtualLab(topic, vl) {
+  const card = document.getElementById("eks-variant-content");
   if (!card) return;
   const table = card.querySelector("#vlab-datatable");
   const select = card.querySelector("#vlab-current-select");
@@ -1598,48 +1639,67 @@ function wireVirtualLab(topic) {
     checkStatus.textContent = t("vlab.checkresult", { grad: gradient.toFixed(4), b: B.toFixed(3) });
   });
 
-  saveBtn.addEventListener("click", () => {
+  // Sejak restrukturisasi 3-varian, data varian virtual TIDAK lagi hanya
+  // disimpan lokal di browser - ikut dikirim ke backend lewat mode
+  // eksperimen_data_save yang sama seperti varian sederhana/laboratorium
+  // (persis meniru wireEksperimenDataTable), supaya guru bisa memantau
+  // ketiga varian secara konsisten. Validasi tambahan khusus varian ini:
+  // kolom hipotesis wajib diisi (di luar validasi tabel data yang umum).
+  saveBtn.addEventListener("click", async () => {
     const rows = Array.from(table.querySelectorAll("tbody tr")).map(tr => ({
       I: parseFloat(tr.dataset.i),
       values: Array.from(tr.querySelectorAll(".vlab-dt-input")).map(i => i.value.trim())
     }));
     const filledRows = rows.filter(r => r.values.some(v => v !== ""));
-    if (!filledRows.length || !hypInput.value.trim()) {
+    if (!filledRows.length) {
+      saveStatus.className = "eks-dt-status eks-dt-status-warn";
+      saveStatus.textContent = t("eksdata.empty");
+      return;
+    }
+    if (!hypInput.value.trim()) {
       saveStatus.className = "eks-dt-status eks-dt-status-warn";
       saveStatus.textContent = t("vlab.empty");
       return;
     }
-    setVirtualLabSavedData(topic.id, {
-      hypothesis: hypInput.value.trim(),
-      rows,
-      gradient: gradInput.value.trim(),
-      bValue: bInput.value.trim(),
-      conclusion: conclInput.value.trim(),
-      savedAt: new Date().toISOString()
-    });
-    saveStatus.className = "eks-dt-status eks-dt-status-ok";
-    saveStatus.textContent = t("vlab.saved");
+    saveBtn.disabled = true;
+    saveStatus.className = "eks-dt-status";
+    saveStatus.textContent = t("eksdata.saving");
+    const backendUrl = getBackendUrl();
+    if (!backendUrl) {
+      saveStatus.className = "eks-dt-status eks-dt-status-warn";
+      saveStatus.textContent = t("eksdata.nobackend");
+      saveBtn.disabled = false;
+      return;
+    }
+    try {
+      const resp = await fetch(backendUrl, {
+        method: "POST", headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({
+          mode: "eksperimen_data_save",
+          topicId: currentTopic.id,
+          studentId: getStudentId(),
+          apiKey: getGeminiApiKey(),
+          context: vl.dataTable.context,
+          rows: rows.map(r => ({ I: r.I, values: r.values.map(v => v === "" ? null : parseFloat(v)) }))
+        })
+      });
+      const data = await resp.json();
+      if (data.error) {
+        saveStatus.className = "eks-dt-status eks-dt-status-warn";
+        saveStatus.textContent = data.error;
+      } else {
+        setEksperimenDataSavedFlag(currentTopic.id, true);
+        saveStatus.className = "eks-dt-status " + (data.flagged ? "eks-dt-status-warn" : "eks-dt-status-ok");
+        saveStatus.textContent = (data.sheetError ? (t("eksdata.sheeterror") + " ") : t("eksdata.saved") + " ") + (data.feedback || "");
+      }
+    } catch (e) {
+      saveStatus.className = "eks-dt-status eks-dt-status-warn";
+      saveStatus.textContent = t("eksdata.networkerror");
+    }
+    saveBtn.disabled = false;
   });
 
-  // Pulihkan data tersimpan sebelumnya (kalau ada) supaya siswa tidak
-  // kehilangan progres saat pindah tab/topik lalu kembali lagi ke sini.
-  const saved = getVirtualLabSavedData(topic.id);
-  if (saved) {
-    hypInput.value = saved.hypothesis || "";
-    gradInput.value = saved.gradient || "";
-    bInput.value = saved.bValue || "";
-    conclInput.value = saved.conclusion || "";
-    (saved.rows || []).forEach(r => {
-      const tr = Array.from(table.querySelectorAll("tbody tr"))
-        .find(row => Math.abs(parseFloat(row.dataset.i) - r.I) < 1e-9);
-      if (!tr) return;
-      const inputs = tr.querySelectorAll(".vlab-dt-input");
-      (r.values || []).forEach((v, ci) => { if (inputs[ci]) inputs[ci].value = v; });
-      recalcVlabRow(tr);
-    });
-  } else {
-    drawVlabGraph();
-  }
+  drawVlabGraph();
 }
 
 function resetEditCount() {

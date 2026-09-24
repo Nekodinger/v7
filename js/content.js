@@ -1088,14 +1088,12 @@ const MAGNETIC_EKSPERIMEN = {
       <li>Getaran meja atau hembusan angin (draught) dapat mengganggu kestabilan pembacaan neraca elektronik.</li>
     </ul>
 
-    <h4>Alternatif tanpa Neraca Timbang Elektronik (kalau alat tidak tersedia)</h4>
-    <p>Kalau sekolah belum punya neraca timbang elektronik yang cukup presisi, percobaan versi kualitatif
-    tetap bisa dilakukan dengan <strong>neraca arus sederhana buatan sendiri</strong>: gantungkan sebuah loop
-    kawat tipis (atau strip aluminium foil) pada seutas benang di antara kutub-kutub sepasang magnet
-    Magnadur, sehingga loop bisa berayun bebas mendekat/menjauh dari magnet ketika dialiri arus. Amati bahwa
-    (a) loop bergerak/menyimpang saat arus dinyalakan, (b) arah simpangan berbalik saat arah arus dibalik,
-    dan (c) besar simpangan bertambah seiring arus diperbesar, sesuai $F = BIL$. Cara ini tidak memberi nilai
-    $B$ secara numerik, tetapi tetap memverifikasi hubungan $F \\propto I$ secara kualitatif.</p>
+    <h4>Sekolah Belum Punya Neraca Timbang Elektronik?</h4>
+    <p>Kalau sekolahmu belum punya alat ini, kamu tidak harus melewatkan eksperimen ini - pilih tab
+    <strong>"Alat Sederhana"</strong> di atas untuk versi neraca arus lengan-ayun buatan sendiri (memakai
+    prinsip momen, bukan neraca digital), atau tab <strong>"Simulasi Virtual"</strong> kalau sekolahmu juga
+    belum punya alat/bahan sama sekali. Ketiga pilihan menguji konsep fisika yang persis sama ($F = BIL$ dan
+    penentuan $B$), hanya berbeda di alat yang dipakai untuk "mengukur" gaya $F$.</p>
 
     <h4>Pertanyaan Diskusi</h4>
     <ul>
@@ -1431,15 +1429,13 @@ const MAGNETIC_EKSPERIMEN_EN = {
       <li>Vibrations of the bench or draughts of air can disturb the stability of the electronic balance reading.</li>
     </ul>
 
-    <h4>Alternative Without an Electronic Balance (if the equipment is unavailable)</h4>
-    <p>If a school does not yet have a sufficiently precise electronic balance, a qualitative version of
-    the experiment can still be carried out using a <strong>simple home-made current balance</strong>:
-    suspend a loop of thin wire (or a strip of aluminium foil) on a thread between the poles of a pair of
-    Magnadur magnets, so that the loop can swing freely towards or away from the magnet when current flows
-    through it. Observe that (a) the loop moves/deflects when the current is switched on, (b) the direction
-    of deflection reverses when the direction of the current is reversed, and (c) the size of the
-    deflection increases as the current is increased, consistent with $F = BIL$. This method does not give
-    a numerical value of $B$, but it still verifies the relationship $F \\propto I$ qualitatively.</p>
+    <h4>School Doesn't Have an Electronic Balance?</h4>
+    <p>If your school doesn't have this apparatus, you don't have to skip this experiment - choose the
+    <strong>"Simple Apparatus"</strong> tab above for a home-made swinging-arm current balance version
+    (using the principle of moments instead of a digital balance), or the <strong>"Virtual Simulation"</strong>
+    tab if your school also has no equipment/materials at all. All three options test exactly the same
+    physics concept ($F = BIL$ and determining $B$), differing only in the apparatus used to "measure" the
+    force $F$.</p>
 
     <h4>Discussion Questions</h4>
     <ul>
@@ -1588,28 +1584,298 @@ const MAGNETIC_EKSPERIMEN_CHECK_EN = [
 ];
 
 /* ============================================================
-   Praktikum Virtual: Neraca Arus (Current Balance) - untuk tab Lab
-   Simulasi Virtual (BUKAN tab Eksperimen).
+   Alat Sederhana: Neraca Arus Lengan-Ayun (tanpa neraca timbang
+   elektronik) - salah satu dari 3 pilihan (varian) eksperimen pada
+   tab Eksperimen untuk topik Magnetic Fields, di samping varian
+   "laboratorium" (MAGNETIC_EKSPERIMEN di atas) dan varian "virtual"
+   (MAGNETIC_VIRTUAL_LAB di bawah). Lihat attachMagneticFieldsContent()
+   untuk bagaimana ketiganya digabung jadi topic.eksperimen.variants.
+   ------------------------------------------------------------
+   Prinsip: neraca lengan-ayun (mirip prinsip momen/tuas) dengan dua
+   lengan sama panjang (d1 = d2) dari poros - satu ujung membawa loop
+   kawat berarus di celah magnet, ujung lain diberi beban kecil (klip
+   kertas/washer) sampai lengan kembali horizontal (metode nol). Karena
+   F x d1 = (Σm x g) x d2 dan d1 = d2, maka F = Σm x g - PERSIS rumus
+   yang sama dengan varian laboratorium (neraca timbang digital), jadi
+   struktur dataTable & formula backend (lihat Code.gs) tetap sama
+   persis, TIDAK perlu perubahan apa pun di Code.gs.
+   ============================================================ */
+const MAGNETIC_EKSPERIMEN_SEDERHANA = {
+  title: "Alat Sederhana: Neraca Arus Lengan-Ayun (Tanpa Neraca Timbang Elektronik)",
+  intro: `
+    <p class="muted">Versi ini untuk sekolah yang <strong>belum punya neraca timbang elektronik</strong>
+    tapi tetap punya alat/bahan dasar (magnet, kawat, catu daya, ammeter). Prinsip fisikanya persis sama
+    dengan versi Laboratorium ($F = BIL$), hanya saja gaya $F$ "diukur" pakai neraca lengan-ayun buatan
+    sendiri (prinsip momen/tuas), bukan neraca timbang digital.</p>
+
+    <h4>Tujuan</h4>
+    <p>Menyelidiki hubungan antara gaya magnetik $F$ pada kawat berarus dan kuat arus $I$ ($F = BIL$), serta
+    menentukan rapat fluks magnetik $B$ sepasang magnet, menggunakan neraca lengan-ayun buatan sendiri
+    sebagai pengganti neraca timbang elektronik.</p>
+
+    <h4>Konsep Dasar: Neraca Lengan-Ayun (Prinsip Momen)</h4>
+    <p>Sebuah lengan kaku ringan (sedotan atau bilah kayu tipis) ditumpu tepat di titik tengahnya sehingga
+    bisa berayun bebas naik-turun seperti jungkat-jungkit. Salah satu ujung lengan membawa loop kawat kecil
+    yang diletakkan di celah medan magnet; ujung lainnya diberi wadah kecil untuk menampung beban penyeimbang
+    (klip kertas atau washer kecil yang sudah ditimbang beratnya). Saat arus $I$ dialirkan melalui loop kawat,
+    gaya magnetik $F = BIL$ mendorong ujung lengan tersebut naik atau turun. Beban penyeimbang ditambahkan
+    sedikit demi sedikit di ujung yang lain sampai lengan kembali tepat horizontal (disebut <strong>metode
+    nol/null method</strong> - titik kesetimbangan paling presisi karena tidak bergantung pada kalibrasi
+    skala apa pun).</p>
+    <p>Dengan prinsip momen (syarat kesetimbangan): jumlah momen di kedua sisi poros harus sama besar,
+    $$F \\times d_1 = (\\Sigma m \\times g) \\times d_2$$
+    dengan $d_1$ = jarak dari poros ke loop kawat, $d_2$ = jarak dari poros ke wadah beban, dan $\\Sigma m$ =
+    total massa beban penyeimbang. <strong>Jika kedua lengan dibuat sama panjang ($d_1 = d_2$)</strong>, kedua
+    jarak saling meniadakan sehingga persamaan sederhana menjadi:
+    $$F = \\Sigma m \\times g$$
+    - persis rumus yang sama seperti pembacaan neraca timbang elektronik pada versi Laboratorium, hanya saja
+    $\\Sigma m$ di sini didapat dari menjumlahkan beban-beban kecil yang kamu tambahkan satu per satu, bukan
+    dibaca langsung dari layar digital.</p>
+
+    <h4>Alat & Bahan</h4>
+    <ul>
+      <li>Sedotan plastik kaku atau bilah kayu/bambu tipis dan ringan (untuk lengan neraca), + penggaris</li>
+      <li>Jarum pentul atau tusuk gigi tajam (sebagai poros/tumpuan) + dudukan/statif kecil</li>
+      <li>Sepasang magnet (magnet batang atau magnet U biasa - tidak perlu Magnadur presisi)</li>
+      <li>Kawat tembaga tipis berenamel (dibentuk jadi loop kecil di salah satu ujung lengan)</li>
+      <li>Klip kertas atau washer kecil yang sudah ditimbang beratnya masing-masing (sebagai beban
+      penyeimbang), ditaruh di wadah kecil (mis. tutup botol ringan) di ujung lengan yang lain</li>
+      <li>Catu daya DC, ammeter, dan rheostat (sama seperti versi Laboratorium)</li>
+      <li>Plastisin sedikit (untuk menyetimbangkan/tare lengan sebelum arus dialirkan)</li>
+      <li>Kabel penghubung secukupnya</li>
+    </ul>
+
+    <h4>Langkah Kerja</h4>
+    <ol>
+      <li>Rakit lengan neraca: tusukkan jarum pentul tepat di titik tengah sedotan/bilah kayu sebagai poros,
+      lalu ukur dengan penggaris untuk memastikan jarak dari poros ke kedua ujung lengan ($d_1$ dan $d_2$)
+      SAMA PANJANG.</li>
+      <li>Pasang loop kawat kecil di salah satu ujung lengan, posisikan tepat di celah antara sepasang
+      magnet sehingga loop berada dalam medan magnet yang cukup seragam.</li>
+      <li>Pasang wadah kecil kosong di ujung lengan yang lain (untuk menampung beban penyeimbang nanti).</li>
+      <li>Sebelum arus dialirkan, tambahkan sedikit plastisin di salah satu ujung untuk menyetimbangkan
+      (tare) lengan sampai benar-benar horizontal tanpa beban apa pun.</li>
+      <li>Ukur dan catat panjang efektif kawat $L$ yang berada di dalam medan magnet.</li>
+      <li>Alirkan arus $I = 0{,}50$ A melalui loop kawat. Lengan akan bergerak naik/turun karena gaya
+      magnetik. Tambahkan beban penyeimbang (klip kertas) sedikit demi sedikit ke wadah di ujung lain sampai
+      lengan kembali tepat horizontal (metode nol). Catat total massa beban yang ditambahkan sebagai
+      $\\Delta m_1$.</li>
+      <li>Ambil semua beban, ulangi langkah yang sama pada arus $I$ yang SAMA sebanyak 2 kali lagi untuk
+      mendapatkan $\\Delta m_2$ dan $\\Delta m_3$.</li>
+      <li>Ulangi seluruh proses (langkah 6-7) untuk $I = 1{,}00$; $1{,}50$; $2{,}00$; dan $2{,}50$ A.</li>
+    </ol>
+
+    <h4>Tabel Data</h4>
+    <p>Isi tabel di bawah ini dengan data hasil percobaanmu (nilai $\\Delta m$ dalam gram; $F$ akan dihitung
+    otomatis memakai $F = \\Sigma m \\times g$ dengan $g = 9{,}81$ m/s², sama seperti versi Laboratorium).</p>
+
+    <h4>Analisis & Perhitungan</h4>
+    <ol>
+      <li>Hitung rata-rata $\\Delta m$ untuk tiap nilai $I$, lalu hitung $F$ memakai $F = \\Delta m \\times g$
+      (dengan $\\Delta m$ dalam kg).</li>
+      <li>Buat grafik $F$ (sumbu-y) terhadap $I$ (sumbu-x). Grafik seharusnya berupa garis lurus melalui
+      (atau dekat) titik asal.</li>
+      <li>Hitung gradien grafik. Karena $F = BIL$, gradien $= BL$, sehingga $B = \\text{gradien} / L$.</li>
+      <li>Bandingkan nilai $B$ yang kamu dapat dengan rentang tipikal magnet U/batang rumahan (sekitar
+      0,05-0,5 T - agak lebih lebar dari magnet Magnadur presisi karena variasi kekuatan magnet yang lebih
+      besar).</li>
+    </ol>
+
+    <h4>Keselamatan Kerja</h4>
+    <ul>
+      <li>Gunakan arus secukupnya (maksimal 2,5 A) - jangan biarkan kawat teraliri arus dalam waktu lama
+      tanpa perlu, karena kawat tipis bisa memanas.</li>
+      <li>Matikan catu daya di antara pengukuran untuk mencegah kawat terlalu panas.</li>
+      <li>Hati-hati dengan jarum pentul/tusuk gigi yang tajam saat merakit poros.</li>
+    </ul>
+
+    <h4>Sumber Kesalahan</h4>
+    <ul>
+      <li>Jika $d_1 \\neq d_2$ (kedua lengan tidak benar-benar sama panjang), rumus $F = \\Sigma m \\times g$
+      tidak lagi berlaku persis dan hasil $B$ akan bergeser secara sistematis - ukur ulang $d_1$ dan $d_2$
+      dengan teliti sebelum memulai.</li>
+      <li>Gesekan pada poros (jarum pentul) dapat membuat lengan "macet" sedikit sebelum benar-benar
+      horizontal, membuat pembacaan $\\Delta m$ kurang presisi dibanding neraca digital.</li>
+      <li>Lengan yang terlalu lentur (melengkung) di bawah beban dapat mengubah $d_1$/$d_2$ secara efektif.</li>
+      <li>Magnet U/batang rumahan biasanya kurang homogen dibanding Magnadur presisi, sehingga rapat fluks
+      $B$ bisa sedikit bervariasi di sepanjang celah.</li>
+    </ul>
+
+    <h4>Pertanyaan Diskusi</h4>
+    <ul>
+      <li>Mengapa syarat $d_1 = d_2$ penting supaya $F = \\Sigma m \\times g$ berlaku? Apa yang terjadi pada
+      persamaan jika $d_1 = 2d_2$?</li>
+      <li>Mengapa metode nol (menyeimbangkan lengan sampai horizontal) lebih presisi dibanding mengukur
+      sudut simpangan lengan secara langsung?</li>
+    </ul>
+
+    <h4>Referensi</h4>
+    <ul>
+      <li>IOP Spark - "Current balance": <a href="https://spark.iop.org/current-balance" target="_blank"
+      rel="noopener">https://spark.iop.org/current-balance</a></li>
+      <li>Physics & Maths Tutor (PMT), AQA A-Level Physics Required Practical 10 - Investigating force on
+      a current-carrying conductor.</li>
+    </ul>
+  `,
+  dataTable: {
+    independentLabel: "I (A)",
+    independentValues: [0.50, 1.00, 1.50, 2.00, 2.50],
+    replicateCount: 3,
+    replicateLabel: "Δm (g)",
+    derivedLabel: "F = Δm×g (N)",
+    context: "Eksperimen Current Balance dengan neraca lengan-ayun buatan sendiri (bukan neraca digital): kawat berarus di salah satu ujung lengan diberi gaya magnetik F=BIL, diimbangi menambah klip kertas/beban kecil di ujung lain (metode nol, prinsip momen) sampai lengan horizontal; jika jarak kedua ujung ke poros sama, F = Δm×g. Data valid: F naik kira-kira LINEAR terhadap I dan melalui/dekat titik asal; 3 ulangan pada arus yang sama harus berdekatan; rapat fluks magnet U/batang rumahan biasanya lebih bervariasi dari Magnadur presisi, kisaran umum tetap 0,05-0,5 T (agak lebih lebar dari versi laboratorium karena magnet kurang presisi)."
+  }
+};
+
+const MAGNETIC_EKSPERIMEN_SEDERHANA_EN = {
+  title: "Simple Apparatus: Swinging-Arm Current Balance (Without an Electronic Balance)",
+  intro: `
+    <p class="muted">This version is for schools that <strong>don't yet have an electronic top-pan
+    balance</strong> but do have basic apparatus/materials (magnets, wire, power supply, ammeter). The
+    underlying physics is exactly the same as the Laboratory version ($F = BIL$); only the force $F$ is
+    "measured" using a home-made swinging-arm balance (the principle of moments) instead of a digital
+    balance.</p>
+
+    <h4>Objective</h4>
+    <p>To investigate the relationship between the magnetic force $F$ on a current-carrying wire and the
+    current $I$ ($F = BIL$), and to determine the magnetic flux density $B$ of a pair of magnets, using a
+    home-made swinging-arm balance in place of an electronic balance.</p>
+
+    <h4>Underlying Concept: The Swinging-Arm Balance (Principle of Moments)</h4>
+    <p>A light rigid arm (a straw or a thin wooden strip) is pivoted exactly at its midpoint so that it can
+    swing freely up and down like a see-saw. One end of the arm carries a small wire loop positioned in the
+    gap of a magnetic field; the other end carries a small container to hold counterweights (paperclips or
+    small washers of known, pre-measured mass). When a current $I$ flows through the wire loop, the magnetic
+    force $F = BIL$ pushes that end of the arm up or down. Counterweights are added a little at a time to
+    the other end until the arm returns to exactly horizontal (the <strong>null method</strong> - the most
+    precise balance point, since it does not depend on any scale calibration).</p>
+    <p>By the principle of moments (equilibrium condition): the moments on both sides of the pivot must be
+    equal,
+    $$F \\times d_1 = (\\Sigma m \\times g) \\times d_2$$
+    where $d_1$ = distance from the pivot to the wire loop, $d_2$ = distance from the pivot to the weight
+    container, and $\\Sigma m$ = total mass of the counterweights added. <strong>If both arm-lengths are
+    made equal ($d_1 = d_2$)</strong>, the two distances cancel out, simplifying the equation to:
+    $$F = \\Sigma m \\times g$$
+    - exactly the same formula as the electronic balance reading in the Laboratory version, except that
+    $\\Sigma m$ here comes from summing the small weights you add one at a time, rather than being read
+    directly off a digital display.</p>
+
+    <h4>Apparatus & Materials</h4>
+    <ul>
+      <li>A rigid plastic straw or a thin, light wooden/bamboo strip (for the balance arm), plus a ruler</li>
+      <li>A pin or a sharp toothpick (as the pivot) plus a small stand/support</li>
+      <li>A pair of magnets (ordinary bar or U-shaped magnets - precision Magnadur is not required)</li>
+      <li>Thin enamelled copper wire (formed into a small loop at one end of the arm)</li>
+      <li>Paperclips or small washers of individually pre-weighed mass (as counterweights), held in a small
+      container (e.g. a light bottle cap) at the other end of the arm</li>
+      <li>DC power supply, ammeter, and rheostat (same as the Laboratory version)</li>
+      <li>A small amount of plasticine (to balance/tare the arm before current is applied)</li>
+      <li>Connecting wires as needed</li>
+    </ul>
+
+    <h4>Procedure</h4>
+    <ol>
+      <li>Assemble the balance arm: push the pin through the exact midpoint of the straw/wooden strip as
+      the pivot, then use a ruler to check that the distances from the pivot to both ends of the arm
+      ($d_1$ and $d_2$) are EQUAL.</li>
+      <li>Attach the small wire loop to one end of the arm, positioning it exactly in the gap between the
+      pair of magnets so the loop sits within a reasonably uniform field.</li>
+      <li>Attach the small empty container to the other end of the arm (to later hold the counterweights).</li>
+      <li>Before applying any current, add a little plasticine to one end to balance (tare) the arm until
+      it is exactly horizontal with no load at all.</li>
+      <li>Measure and record the effective length $L$ of wire lying within the magnetic field.</li>
+      <li>Pass a current $I = 0.50$ A through the wire loop. The arm will move up or down due to the
+      magnetic force. Add counterweights (paperclips) a little at a time to the container at the other end
+      until the arm returns to exactly horizontal (null method). Record the total mass of weights added as
+      $\\Delta m_1$.</li>
+      <li>Remove all the weights, and repeat the same procedure at the SAME current $I$ two more times to
+      obtain $\\Delta m_2$ and $\\Delta m_3$.</li>
+      <li>Repeat the whole process (steps 6-7) for $I = 1.00$, $1.50$, $2.00$, and $2.50$ A.</li>
+    </ol>
+
+    <h4>Data Table</h4>
+    <p>Fill in the table below with your experimental data (values of $\\Delta m$ in grams; $F$ will be
+    calculated automatically using $F = \\Sigma m \\times g$ with $g = 9.81$ m/s², just as in the Laboratory
+    version).</p>
+
+    <h4>Analysis & Calculation</h4>
+    <ol>
+      <li>Calculate the average $\\Delta m$ for each value of $I$, then calculate $F$ using
+      $F = \\Delta m \\times g$ (with $\\Delta m$ in kg).</li>
+      <li>Plot a graph of $F$ (y-axis) against $I$ (x-axis). The graph should be a straight line through
+      (or close to) the origin.</li>
+      <li>Calculate the gradient of the graph. Since $F = BIL$, the gradient $= BL$, so $B = \\text{gradient}
+      / L$.</li>
+      <li>Compare the value of $B$ you obtain with the typical range for ordinary home-made bar/U magnets
+      (roughly 0.05-0.5 T - slightly wider than precision Magnadur magnets, due to greater variation in
+      magnet strength).</li>
+    </ol>
+
+    <h4>Safety</h4>
+    <ul>
+      <li>Use a reasonable current (maximum 2.5 A) - do not leave current flowing through the wire for
+      longer than necessary, since a thin wire can heat up.</li>
+      <li>Switch off the power supply between measurements to avoid overheating the wire.</li>
+      <li>Take care with the sharp pin/toothpick when assembling the pivot.</li>
+    </ul>
+
+    <h4>Sources of Error</h4>
+    <ul>
+      <li>If $d_1 \\neq d_2$ (the two arm-lengths are not truly equal), the formula $F = \\Sigma m \\times g$
+      no longer holds exactly and the resulting $B$ will be systematically shifted - measure $d_1$ and
+      $d_2$ carefully before starting.</li>
+      <li>Friction at the pivot (the pin) can make the arm "stick" slightly before reaching true horizontal,
+      making the $\\Delta m$ reading less precise than with a digital balance.</li>
+      <li>An arm that flexes (bends) under load can effectively change $d_1$/$d_2$.</li>
+      <li>Ordinary bar/U magnets are usually less homogeneous than precision Magnadur magnets, so the flux
+      density $B$ may vary somewhat along the gap.</li>
+    </ul>
+
+    <h4>Discussion Questions</h4>
+    <ul>
+      <li>Why is the condition $d_1 = d_2$ important for $F = \\Sigma m \\times g$ to hold? What happens to
+      the equation if $d_1 = 2d_2$?</li>
+      <li>Why is the null method (balancing the arm to horizontal) more precise than directly measuring the
+      angle of deflection of the arm?</li>
+    </ul>
+
+    <h4>References</h4>
+    <ul>
+      <li>IOP Spark - "Current balance": <a href="https://spark.iop.org/current-balance" target="_blank"
+      rel="noopener">https://spark.iop.org/current-balance</a></li>
+      <li>Physics & Maths Tutor (PMT), AQA A-Level Physics Required Practical 10 - Investigating force on
+      a current-carrying conductor.</li>
+    </ul>
+  `
+};
+
+/* ============================================================
+   Praktikum Virtual: Neraca Arus (Current Balance) - salah satu dari
+   3 pilihan (varian) eksperimen pada tab Eksperimen untuk topik
+   Magnetic Fields (BUKAN lagi di tab Lab Simulasi Virtual/Makerspace).
    ------------------------------------------------------------
    Eksperimen TAMBAHAN, khusus untuk sekolah yang TIDAK punya alat
    sederhana MAUPUN alat lab (neraca timbang elektronik) untuk praktikum
-   Current Balance di MAGNETIC_EKSPERIMEN di atas. Langkah kerja, variabel,
-   dan struktur tabel data di sini dibuat PERSIS mengikuti LKPD 2 (Modul
-   Ajar, Bagian 11, "Praktikum Current Balance - Pertemuan 2": 2a prediksi
-   bentuk grafik F-I, 2b panjang L + tabel I/Δm (3 ulangan)/F, 2c gradien
-   & B serta kesimpulan) dan prosedur eksperimen nyata di atas - satu-
-   satunya beda adalah arus & pembacaan neraca disimulasikan di browser
-   (bukan generatif AI, jadi TIDAK butuh API key ataupun koneksi ke
-   backend sama sekali: murni JS di klien, data tersimpan lokal di
-   browser siswa masing-masing lewat localStorage).
+   Current Balance. Langkah kerja, variabel, dan struktur tabel data di
+   sini dibuat PERSIS mengikuti LKPD 2 (Modul Ajar, Bagian 11, "Praktikum
+   Current Balance - Pertemuan 2": 2a prediksi bentuk grafik F-I, 2b
+   panjang L + tabel I/Δm (3 ulangan)/F, 2c gradien & B serta kesimpulan)
+   dan prosedur eksperimen nyata di atas - satu-satunya beda adalah arus
+   & pembacaan neraca disimulasikan di browser (bukan generatif AI, jadi
+   TIDAK butuh API key ataupun koneksi ke backend khusus untuk simulasi
+   itu sendiri; sejak restrukturisasi 3-varian, data hasil percobaan
+   TETAP dikirim ke backend lewat mode eksperimen_data_save yang sama
+   seperti varian sederhana/laboratorium, supaya guru bisa memantau
+   semua varian secara konsisten).
    Dirender oleh renderVirtualLabHTML()/wireVirtualLab() di js/app.js.
    ============================================================ */
 const MAGNETIC_VIRTUAL_LAB = {
   title: "Praktikum Virtual: Neraca Arus (Current Balance)",
   intro: `
-    <p class="muted">Aktivitas ini untuk sekolah yang <strong>belum punya neraca timbang elektronik
-    maupun alat sederhana</strong> (loop kawat/aluminium foil) untuk praktikum Current Balance di tab
-    Eksperimen. Simulasi ini meniru alat, langkah kerja, dan tabel data LKPD 2 pada eksperimen nyata
+    <p class="muted">Pilihan ini untuk sekolah yang <strong>belum punya alat/bahan sama sekali</strong>
+    untuk praktikum Current Balance - baik neraca timbang elektronik (lihat tab <strong>"Alat
+    Laboratorium"</strong>) maupun alat lengan-ayun buatan sendiri (lihat tab <strong>"Alat
+    Sederhana"</strong>) di atas. Simulasi ini meniru alat, langkah kerja, dan tabel data eksperimen nyata
     tersebut - kamu tetap "mengukur", mencatat, membuat grafik, dan menghitung $B$ sendiri, hanya saja
     arus dan neraca yang dipakai berupa alat virtual di layar, bukan alat fisik sungguhan.</p>
 
@@ -1638,7 +1904,8 @@ const MAGNETIC_VIRTUAL_LAB = {
     independentValues: [0.50, 1.00, 1.50, 2.00, 2.50],
     replicateCount: 3,
     replicateLabel: "Δm (g)",
-    derivedLabel: "F = Δm×g (N)"
+    derivedLabel: "F = Δm×g (N)",
+    context: "Eksperimen Current Balance VIRTUAL (simulasi di layar, bukan alat fisik sungguhan): kawat berarus I diletakkan tegak lurus medan sepasang magnet virtual di atas neraca timbang virtual. Gaya magnetik F = BIL terbaca sebagai perubahan massa Δm pada neraca (F = Δm/1000 × 9,81). Data yang valid: F harus naik kira-kira LINEAR terhadap I dan melalui/dekat titik asal (I=0 -> F=0); tiga pembacaan ulangan (Δm₁/Δm₂/Δm₃) pada arus yang sama seharusnya saling berdekatan (bukan tersebar jauh, karena noise simulasi sengaja dibuat kecil); rapat fluks magnet virtual (gradien grafik F-I dibagi panjang L) tipikal ada di kisaran 0,15-0,35 T."
   },
   // Alat virtual: L tetap/diberikan (bukan diukur siswa, karena tidak ada
   // alat fisik); B "sungguhan" dirandom sekali per siswa per topik (lihat
@@ -1656,11 +1923,12 @@ const MAGNETIC_VIRTUAL_LAB = {
 const MAGNETIC_VIRTUAL_LAB_EN = {
   title: "Virtual Practical: Current Balance",
   intro: `
-    <p class="muted">This activity is for schools that <strong>don't yet have an electronic top-pan
-    balance or the simple apparatus</strong> (wire loop/aluminium foil) for the Current Balance practical
-    in the Experiment tab. This simulation mirrors the apparatus, procedure, and data table of LKPD 2 from
-    that real experiment - you still "measure", record, graph, and calculate $B$ yourself; only the
-    current and balance you use are virtual on-screen instruments, not real physical ones.</p>
+    <p class="muted">This option is for schools that <strong>don't have any apparatus/materials at
+    all</strong> for the Current Balance practical - neither an electronic top-pan balance (see the
+    <strong>"Laboratory Apparatus"</strong> tab) nor a home-made swinging-arm balance (see the
+    <strong>"Simple Apparatus"</strong> tab) above. This simulation mirrors the apparatus, procedure, and
+    data table of that real experiment - you still "measure", record, graph, and calculate $B$ yourself;
+    only the current and balance you use are virtual on-screen instruments, not real physical ones.</p>
 
     <h4>Objective</h4>
     <p>Same as the real experiment: verify $F = BIL$ and determine the magnetic flux density $B$ of a
@@ -1688,23 +1956,36 @@ const MAGNETIC_VIRTUAL_LAB_EN = {
   const topic = TOPICS.find(t => t.id === "magnetic-fields");
   topic.desc = { id: topic.desc, en: MAGNETIC_DESC_EN };
   topic.materiHTML = { id: MAGNETIC_MATERI, en: MAGNETIC_MATERI_EN };
+  // Topik Magnetic Fields punya 3 PILIHAN (varian) eksperimen sekaligus
+  // di tab Eksperimen - Virtual, Sederhana, Laboratorium - supaya sekolah
+  // bisa memilih sesuai alat yang tersedia. Dirender lewat sub-tab pilihan
+  // (pill switcher) oleh renderEksperimen() di js/app.js, yang mengecek
+  // keberadaan topic.eksperimen.variants untuk membedakan topik dengan
+  // banyak varian (seperti ini) dari topik lain yang masih memakai jalur
+  // lama satu-eksperimen (topic.eksperimen.dataTable langsung, TIDAK
+  // diubah - lihat Kinematics/Temperature/Ideal Gases/Thermodynamics).
   topic.eksperimen = {
-    title: { id: MAGNETIC_EKSPERIMEN.title, en: MAGNETIC_EKSPERIMEN_EN.title },
-    intro: { id: MAGNETIC_EKSPERIMEN.intro, en: MAGNETIC_EKSPERIMEN_EN.intro },
-    // Tabel input data pengamatan interaktif (lihat dataTable di
-    // MAGNETIC_EKSPERIMEN di atas) - HARUS ikut disalin ke sini, karena
-    // renderEksperimen() di js/app.js membaca currentTopic.eksperimen.dataTable,
-    // bukan MAGNETIC_EKSPERIMEN.dataTable langsung.
-    dataTable: MAGNETIC_EKSPERIMEN.dataTable
-  };
-  // Eksperimen tambahan untuk tab Lab Simulasi Virtual (lihat komentar
-  // panjang di MAGNETIC_VIRTUAL_LAB di atas) - dibaca oleh
-  // setupVirtualLabForTopic() di js/app.js lewat currentTopic.virtualLab.
-  topic.virtualLab = {
-    title: { id: MAGNETIC_VIRTUAL_LAB.title, en: MAGNETIC_VIRTUAL_LAB_EN.title },
-    intro: { id: MAGNETIC_VIRTUAL_LAB.intro, en: MAGNETIC_VIRTUAL_LAB_EN.intro },
-    dataTable: MAGNETIC_VIRTUAL_LAB.dataTable,
-    apparatus: MAGNETIC_VIRTUAL_LAB.apparatus
+    variantOrder: ["virtual", "sederhana", "laboratorium"],
+    defaultVariant: "laboratorium",
+    variants: {
+      laboratorium: {
+        title: { id: MAGNETIC_EKSPERIMEN.title, en: MAGNETIC_EKSPERIMEN_EN.title },
+        intro: { id: MAGNETIC_EKSPERIMEN.intro, en: MAGNETIC_EKSPERIMEN_EN.intro },
+        dataTable: MAGNETIC_EKSPERIMEN.dataTable
+      },
+      sederhana: {
+        title: { id: MAGNETIC_EKSPERIMEN_SEDERHANA.title, en: MAGNETIC_EKSPERIMEN_SEDERHANA_EN.title },
+        intro: { id: MAGNETIC_EKSPERIMEN_SEDERHANA.intro, en: MAGNETIC_EKSPERIMEN_SEDERHANA_EN.intro },
+        dataTable: MAGNETIC_EKSPERIMEN_SEDERHANA.dataTable
+      },
+      virtual: {
+        title: { id: MAGNETIC_VIRTUAL_LAB.title, en: MAGNETIC_VIRTUAL_LAB_EN.title },
+        intro: { id: MAGNETIC_VIRTUAL_LAB.intro, en: MAGNETIC_VIRTUAL_LAB_EN.intro },
+        dataTable: MAGNETIC_VIRTUAL_LAB.dataTable,
+        apparatus: MAGNETIC_VIRTUAL_LAB.apparatus,
+        interactive: true
+      }
+    }
   };
   topic.latihan = MAGNETIC_LATIHAN.map((q, i) => {
     const qEN = MAGNETIC_LATIHAN_EN[i] || {};
