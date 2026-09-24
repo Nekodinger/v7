@@ -675,8 +675,37 @@ body.nav-pinned .topic-nav {
   .lab-grid { grid-template-columns: 1fr; }
 }
 
-/* ---------------- Praktikum Virtual (tab Lab, eksperimen tanpa alat) ---- */
-#lab-vlab-card { margin-bottom: 18px; }
+/* ---------------- Sub-tab pilihan varian Eksperimen (Virtual/Sederhana/
+   Laboratorium) - pill switcher, dimodelkan langsung dari .lang-switch di
+   atas. Hanya SATU varian yang dirender ke DOM sekaligus (lihat
+   renderEksVariantContent() di js/app.js), jadi elemen di dalamnya aman
+   memakai ID yang sama di ketiga varian. ---------------- */
+.eks-variant-switcher {
+  display: inline-flex;
+  background: var(--panel-light);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+  margin: 4px 0 16px;
+  flex-wrap: wrap;
+}
+.eks-variant-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  padding: 7px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  font-family: inherit;
+}
+.eks-variant-btn:hover { color: var(--text); }
+.eks-variant-btn.active { background: var(--accent); color: #ffffff; }
+
+/* ---------------- Praktikum Virtual (varian "virtual" tab Eksperimen) --- */
 .vlab-apparatus {
   background: var(--panel);
   border: 1px solid var(--border);
