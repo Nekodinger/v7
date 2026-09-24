@@ -399,7 +399,7 @@ function startEksperimenGate() {
     questions: currentTopic.eksperimenCheck || null,
     fallbackLabel: t("gate.eksperimen.fallback"),
     submitLabel: t("gate.eksperimen.submitbtn"),
-    onPass: () => submitGateForApproval("eksperimen", t("gate.eksperimen.autosummary"))
+    onPass: () => submitGateForApproval("eksperimen", t("gate.eksperimen.autosummary") + lkpdSummaryText())
   });
 }
 function startLabReflectionGate() {
@@ -1228,13 +1228,25 @@ function renderEksperimen() {
   const panel = document.getElementById("panel-eksperimen");
   if (currentTopic.status === "ready" && currentTopic.eksperimen) {
     const ex = currentTopic.eksperimen;
-    panel.innerHTML = pjblStageHTML("eksperimen") +
-      `<div id="eksperimen-gate-banner" class="gate-banner" hidden></div>` +
-      `<h3>${trContent(ex.title)}</h3>${trContent(ex.intro)}` +
-      (ex.simHTML ? `<div class="sim-embed"><iframe sandbox="allow-scripts" srcdoc="${escapeAttr(ex.simHTML)}"></iframe></div>` : "") +
-      (ex.dataTable ? renderEksperimenDataTableHTML(ex.dataTable) : "");
-    renderGateBanner("eksperimen");
-    if (ex.dataTable) wireEksperimenDataTable(ex.dataTable);
+    if (ex.lkpd) {
+      // LKPD interaktif (mirip LiveWorksheet) + pilihan Praktikum Sederhana / Lab.
+      lkpdCtx = null;
+      panel.innerHTML = pjblStageHTML("eksperimen") +
+        `<div id="eksperimen-gate-banner" class="gate-banner" hidden></div>` +
+        `<h3>${trContent(ex.title)}</h3>${trContent(ex.intro)}` +
+        renderLkpdHTML(currentTopic, ex);
+      renderGateBanner("eksperimen");
+      wireLkpd(panel, currentTopic, ex);
+    } else {
+      panel.innerHTML = pjblStageHTML("eksperimen") +
+        `<div id="eksperimen-gate-banner" class="gate-banner" hidden></div>` +
+        `<h3>${trContent(ex.title)}</h3>${trContent(ex.intro)}` +
+        (ex.simHTML ? `<div class="sim-embed"><iframe sandbox="allow-scripts" srcdoc="${escapeAttr(ex.simHTML)}"></iframe></div>` : "") +
+        (ex.dataTable ? renderEksperimenDataTableHTML(ex.dataTable) : "");
+      renderGateBanner("eksperimen");
+      if (ex.dataTable) wireEksperimenDataTable(ex.dataTable);
+      makeStaticTablesFillable(panel);
+    }
   } else {
     panel.innerHTML = comingSoonHTML("eksperimen");
   }
@@ -1253,13 +1265,22 @@ function renderEksperimen() {
 // lokal tepat di bawah tombol (bukan ke #generate-status yang jauh),
 // mengikuti pola status-lokal yang sudah dipakai "Edit Simulasi Ini" di
 // tab Lab supaya pesannya tidak pernah terlewat siswa.
-function renderEksperimenDataTableHTML(dt) {
-  const rowsHTML = dt.independentValues.map((iVal, ri) => {
-    const repCells = Array.from({ length: dt.replicateCount }, (_, ci) =>
-      `<td><input type="number" step="any" class="eks-dt-input" data-row="${ri}" data-col="${ci}" aria-label="${dt.replicateLabel} #${ci + 1}"></td>`
-    ).join("");
-    return `<tr data-row="${ri}" data-i="${iVal}">` +
-      `<td class="eks-dt-i">${String(iVal).replace(".", ",")}</td>` +
+function renderEksperimenDataTableHTML(dt, saved, opts) {
+  opts = opts || {};
+  saved = saved || {};
+  const editable = !!dt.independentEditable;
+  const nRows = editable ? (dt.rowCount || 5) : dt.independentValues.length;
+  const rowsHTML = Array.from({ length: nRows }, (_, ri) => {
+    const savedInd = (editable && saved.ind && saved.ind[ri] !== undefined) ? saved.ind[ri] : "";
+    const indCell = editable
+      ? `<td class="eks-dt-i"><input type="number" step="any" min="0" class="eks-dt-ind" data-row="${ri}" value="${escapeAttr(String(savedInd))}" aria-label="${escapeAttr(dt.independentLabel)}"></td>`
+      : `<td class="eks-dt-i">${String(dt.independentValues[ri]).replace(".", ",")}</td>`;
+    const repCells = Array.from({ length: dt.replicateCount }, (_, ci) => {
+      const sv = (saved.vals && saved.vals[ri] && saved.vals[ri][ci] !== undefined) ? saved.vals[ri][ci] : "";
+      return `<td><input type="number" step="any" class="eks-dt-input" data-row="${ri}" data-col="${ci}" value="${escapeAttr(String(sv))}" aria-label="${escapeAttr(dt.replicateLabel)} #${ci + 1}"></td>`;
+    }).join("");
+    return `<tr data-row="${ri}"${editable ? "" : ` data-i="${dt.independentValues[ri]}"`}>` +
+      indCell +
       repCells +
       `<td class="eks-dt-avg" data-row="${ri}">-</td>` +
       `<td class="eks-dt-f" data-row="${ri}">-</td>` +
@@ -1268,14 +1289,15 @@ function renderEksperimenDataTableHTML(dt) {
   const repHeaders = Array.from({ length: dt.replicateCount }, (_, ci) =>
     `<th>${dt.replicateLabel}<sub>${ci + 1}</sub></th>`
   ).join("");
+  // Dalam LKPD interaktif, judul & petunjuk bagian sudah disediakan LKPD (opts.bare).
+  const head = opts.bare ? "" : `<h4>${t("eksdata.title")}</h4><p class="muted">${t("eksdata.desc")}</p>`;
   return `
     <div class="eks-datatable-section">
-      <h4>${t("eksdata.title")}</h4>
-      <p class="muted">${t("eksdata.desc")}</p>
-      <table class="eks-datatable">
-        <thead><tr><th>${dt.independentLabel}</th>${repHeaders}<th>${dt.replicateLabel} rata-rata</th><th>${dt.derivedLabel}</th></tr></thead>
+      ${head}
+      <div class="eks-dt-scroll"><table class="eks-datatable">
+        <thead><tr><th>${dt.independentLabel}</th>${repHeaders}<th>${dt.replicateLabel} ${t("eksdata.avgsuffix")}</th><th>${dt.derivedLabel}</th></tr></thead>
         <tbody>${rowsHTML}</tbody>
-      </table>
+      </table></div>
       <button type="button" id="eks-dt-save-btn" class="btn btn-primary btn-small">${t("eksdata.savebtn")}</button>
       <p id="eks-dt-status" class="eks-dt-status"></p>
     </div>`;
@@ -1299,27 +1321,57 @@ function recalcEksperimenRow(tr, dt) {
     fCell.textContent = "-";
   }
 }
-function wireEksperimenDataTable(dt) {
+// Membaca isi tabel dari DOM: [{ I: angka|null, values: ["...", ...] }].
+// I = nilai tetap (data-i) atau isian siswa bila kolom pertama bisa diisi
+// (dt.independentEditable, mis. arus yang diukur siswa dengan multimeter).
+function readEksperimenTable(table, dt) {
+  const editable = !!(dt && dt.independentEditable);
+  return Array.from(table.querySelectorAll("tbody tr")).map(tr => {
+    const values = Array.from(tr.querySelectorAll(".eks-dt-input")).map(i => i.value.trim());
+    let I;
+    if (editable) {
+      const v = parseFloat(tr.querySelector(".eks-dt-ind").value);
+      I = isNaN(v) ? null : v;
+    } else {
+      I = parseFloat(tr.dataset.i);
+    }
+    return { I, values };
+  });
+}
+function wireEksperimenDataTable(dt, opts) {
+  opts = opts || {};
   const panel = document.getElementById("panel-eksperimen");
   const table = panel.querySelector(".eks-datatable");
   const saveBtn = document.getElementById("eks-dt-save-btn");
   const statusEl = document.getElementById("eks-dt-status");
   if (!table || !saveBtn) return;
+  const editable = !!dt.independentEditable;
+
+  // Hitung ulang baris yang sudah terisi (nilai tersimpan dipulihkan saat render)
+  table.querySelectorAll("tbody tr").forEach(tr => recalcEksperimenRow(tr, dt));
+  const tableState = () => ({
+    ind: Array.from(table.querySelectorAll(".eks-dt-ind")).map(i => i.value),
+    vals: Array.from(table.querySelectorAll("tbody tr")).map(tr => Array.from(tr.querySelectorAll(".eks-dt-input")).map(i => i.value))
+  });
 
   table.addEventListener("input", (e) => {
-    if (!e.target.classList.contains("eks-dt-input")) return;
+    const cl = e.target.classList;
+    if (!cl.contains("eks-dt-input") && !cl.contains("eks-dt-ind")) return;
     recalcEksperimenRow(e.target.closest("tr"), dt);
+    if (opts.onChange) opts.onChange(tableState());
   });
 
   saveBtn.addEventListener("click", async () => {
-    const rows = Array.from(table.querySelectorAll("tbody tr")).map(tr => {
-      const values = Array.from(tr.querySelectorAll(".eks-dt-input")).map(i => i.value.trim());
-      return { I: parseFloat(tr.dataset.i), values };
-    });
+    const rows = readEksperimenTable(table, dt);
     const filledRows = rows.filter(r => r.values.some(v => v !== ""));
     if (!filledRows.length) {
       statusEl.className = "eks-dt-status eks-dt-status-warn";
       statusEl.textContent = t("eksdata.empty");
+      return;
+    }
+    if (editable && filledRows.some(r => r.I === null)) {
+      statusEl.className = "eks-dt-status eks-dt-status-warn";
+      statusEl.textContent = t("eksdata.needI", { label: dt.independentLabel });
       return;
     }
     saveBtn.disabled = true;
@@ -1337,7 +1389,9 @@ function wireEksperimenDataTable(dt) {
         method: "POST", headers: { "Content-Type": "text/plain" },
         body: JSON.stringify({
           mode: "eksperimen_data_save",
-          topicId: currentTopic.id,
+          // Mode praktikum ikut dicatat di kolom "Topik" spreadsheet agar guru tahu
+          // data berasal dari praktikum sederhana atau lab.
+          topicId: currentTopic.id + (opts.modeKey ? " (" + opts.modeKey + ")" : ""),
           studentId: getStudentId(),
           apiKey: getGeminiApiKey(),
           context: dt.context,
@@ -1363,6 +1417,7 @@ function wireEksperimenDataTable(dt) {
         setEksperimenDataSavedFlag(currentTopic.id, true);
         statusEl.className = "eks-dt-status " + (data.flagged ? "eks-dt-status-warn" : "eks-dt-status-ok");
         statusEl.textContent = t("eksdata.saved") + " " + (data.feedback || "");
+        if (opts.onSaved) opts.onSaved();
       }
     } catch (e) {
       statusEl.className = "eks-dt-status eks-dt-status-warn";
@@ -1389,27 +1444,75 @@ function renderLatihan() {
   const panel = document.getElementById("panel-latihan");
   if (currentTopic.status === "ready" && currentTopic.latihan && currentTopic.latihan.length) {
     panel.innerHTML = pjblStageHTML("latihan") + `<div id="latihan-diff"></div>` + currentTopic.latihan.map((q, i) => {
-      let optionsHTML = "";
+      // Kunci jawaban TIDAK ditulis ke DOM saat render: label "(jawaban benar)"
+      // dan pembahasan baru muncul setelah siswa memilih/menulis jawaban lalu
+      // menekan "Cek Jawaban" (lihat wireLatihanChecks).
+      let inputHTML = "";
       if (q.type === "mcq") {
-        optionsHTML = `<ul class="options">${q.options.map((opt, oi) =>
-          `<li>${String.fromCharCode(65 + oi)}. ${trContent(opt)}${oi === q.correct ? ` <span class="muted">${t("answer.correct")}</span>` : ''}</li>`
+        inputHTML = `<ul class="options latihan-options">${q.options.map((opt, oi) =>
+          `<li><label><input type="radio" name="lat-${i}" value="${oi}"> ${String.fromCharCode(65 + oi)}. ${trContent(opt)}</label></li>`
         ).join("")}</ul>`;
+      } else {
+        inputHTML = `<textarea class="latihan-answer" rows="3" placeholder="${escapeAttr(t("question.answer.placeholder"))}" aria-label="${escapeAttr(t("question.label", { n: i + 1 }))}"></textarea>`;
       }
       return `
-        <div class="question-card">
+        <div class="question-card latihan-q" data-i="${i}">
           <div class="q-title">${t("question.label", { n: i + 1 })}</div>
           <div>${trContent(q.question)}</div>
-          ${optionsHTML}
-          <button class="reveal-btn" onclick="this.nextElementSibling.classList.toggle('show')">${t("question.reveal")}</button>
+          ${inputHTML}
+          <button type="button" class="reveal-btn latihan-check-btn">${t("question.check")}</button>
+          <p class="confirm-feedback small latihan-feedback" hidden></p>
           <div class="solution"><strong>${t("question.solution")}</strong><br>${trContent(q.solution)}</div>
         </div>`;
     }).join("") + `<div id="latihan-extra"></div>`;
+    wireLatihanChecks(panel);
   } else {
     panel.innerHTML = comingSoonHTML("latihan");
   }
   if (window.MathJax && window.MathJax.typesetPromise) {
     window.MathJax.typesetPromise([panel]);
   }
+}
+
+// "Cek Jawaban" pada Latihan Soal. Pilihan ganda: tandai pilihan siswa benar/
+// salah, dan HANYA SETELAH tombol ditekan tampilkan label "(jawaban benar)" pada
+// opsi yang benar + pembahasan. Uraian: tampilkan pembahasan (jawaban model)
+// setelah siswa menekan tombol; tombol yang sama menyembunyikannya lagi.
+function wireLatihanChecks(panel) {
+  panel.querySelectorAll(".latihan-q").forEach(card => {
+    const q = currentTopic.latihan[parseInt(card.dataset.i, 10)];
+    const btn = card.querySelector(".latihan-check-btn");
+    const fb = card.querySelector(".latihan-feedback");
+    const sol = card.querySelector(".solution");
+    btn.addEventListener("click", () => {
+      if (q.type !== "mcq") {
+        sol.classList.toggle("show");
+        return;
+      }
+      const picked = card.querySelector("input[type=radio]:checked");
+      fb.hidden = false;
+      if (!picked) {
+        fb.className = "confirm-feedback small warn latihan-feedback";
+        fb.textContent = t("extra.pickone");
+        return;
+      }
+      const ok = parseInt(picked.value, 10) === q.correct;
+      card.querySelectorAll(".latihan-options li").forEach((li, oi) => {
+        li.classList.remove("opt-correct", "opt-wrong");
+        const old = li.querySelector(".opt-correct-tag");
+        if (old) old.remove();
+        if (oi === q.correct) {
+          li.classList.add("opt-correct");
+          (li.querySelector("label") || li).insertAdjacentHTML("beforeend", ` <span class="muted opt-correct-tag">${t("answer.correct")}</span>`);
+        } else if (oi === parseInt(picked.value, 10)) {
+          li.classList.add("opt-wrong");
+        }
+      });
+      fb.className = "confirm-feedback small " + (ok ? "ok" : "warn") + " latihan-feedback";
+      fb.textContent = ok ? t("extra.correct") : t("extra.wrong", { letter: String.fromCharCode(65 + q.correct) });
+      sol.classList.add("show");
+    });
+  });
 }
 
 function comingSoonHTML(section) {
@@ -1809,6 +1912,9 @@ function applyAbilityToLab() {
 // Dipanggil setiap tingkat berubah (hasil kuis Materi baru, atau dipilih manual).
 function onLevelChanged() {
   refreshAbilityBar();
+  // LKPD punya soal pengayaan (tingkat lanjut) & petunjuk (tingkat dasar);
+  // jawaban tersimpan sehingga aman digambar ulang.
+  if (currentTopic && currentTopic.eksperimen && currentTopic.eksperimen.lkpd && currentTopic.status === "ready") renderEksperimen();
   renderMateriDifferentiation();
   renderLatihanDifferentiation();
   applyAbilityToLab();
