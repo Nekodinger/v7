@@ -18,7 +18,7 @@ physics-sandbox/
 ├── index.html              -> halaman utama (satu halaman, semua topik)
 ├── teacher.html            -> Panel Guru (kontrol sesi kelas + monitoring roster real-time)
 ├── css/style.css            -> tampilan
-├── js/config.js             -> URL backend AI + Kode Eksplorasi Bebas (publik, isi setelah deploy Apps Script)
+├── js/config.js             -> URL backend AI + kode belajar mandiri + Kode Eksplorasi Bebas (publik, isi setelah deploy Apps Script)
 ├── js/content.js            -> SEMUA konten topik (materi, eksperimen, latihan soal)
 ├── js/lkpd-content.js       -> konten LKPD Eksperimen (mode Praktikum Sederhana & Lab, dwibahasa)
 ├── js/lkpd.js               -> mesin LKPD interaktif (tabel, grafik otomatis, cek jawaban, skor)
@@ -114,6 +114,8 @@ Supaya "next" antar tab bukan cuma klik kosong, tiap tab sekarang punya **pertan
 - **Lab Simulasi (checkpoint kedua/terakhir)**: setelah menghasilkan simulasi, siswa menulis refleksi singkat (validasi apakah simulasinya sesuai konsep fisika topik itu) di bagian bawah tab Lab, lalu kirim untuk konfirmasi guru (mode `gate_submit` juga, stage `lab`) - dipakai guru untuk menandai topik itu benar-benar selesai.
 
 Kalau guru **menolak** salah satu permintaan (lewat Panel Guru), siswa melihat catatan guru (opsional) di banner dan bisa langsung coba lagi (tombol "Coba Lagi" membuka ulang pertanyaan/form refleksinya). Semua status pending/approved/rejected di-cache di `localStorage` supaya UI tidak kosong sebelum polling pertama selesai atau saat offline sebentar.
+
+**Layar awal: Belajar di kelas atau Belajar mandiri.** Setelah memasukkan API key, siswa memilih cara belajar (tidak ada lagi pilihan siswa/bukan siswa), mengisi nama & kelas, lalu memasukkan kode. **Belajar di kelas** memakai kode sesi yang dibuat guru di Panel Guru (diverifikasi ke backend; setelah kode diterima sekali, siswa tidak dilempar keluar bila sesi berakhir). **Belajar mandiri** memakai kode belajar mandiri, yaitu `SELF_STUDY_CODE` di `js/config.js` (bawaan `fisika-merdeka`, publik/tidak rahasia dan bisa diganti kapan saja). Belajar mandiri tetap bertahap: lanjut dari Materi ke Eksperimen begitu skor kuis 80%, tanpa konfirmasi guru; kode ini TIDAK membuka semua topik/tab sekaligus.
 
 Guru bisa membagikan **Kode Eksplorasi Bebas** (`TEACHER_UNLOCK_CODE` di `js/config.js`, publik/tidak rahasia) ke siswa yang perlu menjelajah tanpa urutan (dan tanpa gate/konfirmasi guru sama sekali), misalnya untuk eksplorasi mandiri di rumah.
 
