@@ -20,6 +20,8 @@ physics-sandbox/
 ├── css/style.css            -> tampilan
 ├── js/config.js             -> URL backend AI + Kode Eksplorasi Bebas (publik, isi setelah deploy Apps Script)
 ├── js/content.js            -> SEMUA konten topik (materi, eksperimen, latihan soal)
+├── js/lkpd-content.js       -> konten LKPD Eksperimen (mode Praktikum Sederhana & Lab, dwibahasa)
+├── js/lkpd.js               -> mesin LKPD interaktif (tabel, grafik otomatis, cek jawaban, skor)
 ├── js/demo-simulations.js   -> simulasi jadi (eksperimen Kinematics + mode demo lab)
 ├── js/chatbot-data.js       -> bahan Tutor Fisika per topik (acuan AI + skrip cadangan offline)
 ├── js/chatbot.js            -> logika Tutor Fisika (chat AI + fallback lokal)
@@ -149,9 +151,20 @@ Tiap siswa punya tingkat belajar: Dasar (penguatan), Menengah (inti), atau Lanju
 - Lab Simulasi: bawaan "Tingkat kompleksitas" mengikuti tingkat, plus arahan tambahan di prompt (Dasar: panel "Apa yang harus diamati"; Lanjut: tugas "Prediksi dulu", tabel data, soal tantangan).
 - Guru: tingkat tampil di roster Panel Guru dan sebagai awalan "[Tingkat]" pada ringkasan konfirmasi Eksperimen/Lab.
 
+## LKPD interaktif & dua mode praktikum (tab Eksperimen)
+
+Tab Eksperimen memakai LKPD interaktif (mirip LiveWorksheet), bukan lagi teks panjang dengan tabel kosong. Siswa memilih salah satu dari dua mode; data dan jawaban tiap mode tersimpan terpisah di perangkat (per siswa, topik, dan mode) dan pulih saat halaman dimuat ulang:
+
+- **Praktikum Sederhana**: alat sehari-hari (timbangan digital dapur/saku, magnet neodymium bekas hard disk/speaker, kawat email, baterai AA, multimeter murah). Arus $I$ diukur siswa sendiri, sehingga kolom pertama tabel bisa diisi.
+- **Praktikum Lab**: neraca arus standar laboratorium (neraca elektronik 0,01 g, catu daya DC). Halaman ini mencantumkan contoh kit nyata beserta tautan halaman produknya: PASCO EM-8607 dan SF-8607, PHYWE P2410601, serta Pudak Scientific FU-04, PEK 500, dan PEI 300 (sensor medan magnet untuk memverifikasi $B$). Harga dan ketersediaan bisa berubah, jadi cek langsung ke vendor. Catatan: kit Pudak yang tercantum tidak dinyatakan sebagai neraca arus kuantitatif; periksa manualnya.
+
+Isi LKPD: hipotesis, ceklis alat dan langkah kerja, keselamatan, ukuran alat ($L$, $N$), tabel data yang bisa diisi (rata-rata dan $F$ otomatis; tombol Simpan Data ke spreadsheet tetap seperti sebelumnya, dengan mode dicatat di kolom Topik), grafik $F$-$I$ otomatis dengan garis terbaik, $B$ dari gradien, soal dengan tombol Cek Jawaban, isian bebas dengan contoh jawaban, kemajuan, dan skor. Siswa tingkat dasar mendapat petunjuk yang terbuka otomatis, tingkat lanjut mendapat soal pengayaan. Skor LKPD ikut ke ringkasan konfirmasi guru. Konten ada di `js/lkpd-content.js`, mesinnya di `js/lkpd.js`. Topik lain yang belum punya LKPD tetap memakai teks eksperimen lama, tetapi sel kosong pada tabel statisnya otomatis menjadi kolom isian.
+
+Pada Latihan Soal, tanda "(jawaban benar)" dan pembahasan hanya muncul setelah siswa memilih jawaban dan menekan Cek Jawaban.
+
 ## Tes otomatis
 
-Folder tests/ berisi server uji lokal yang menjalankan Code.gs ASLI dengan layanan Google/Gemini palsu (tidak menyentuh Apps Script, spreadsheet, atau kuota Gemini sungguhan) dan 21 tes Playwright. Setiap tes mereset state server (sesi aktif), membuka browser baru, lalu login sebagai siswa lewat layar gerbang. Jalankan: `node tests/mock-backend.js 8787 &` lalu `NODE_PATH=$(npm root -g) node tests/e2e.js`.
+Folder tests/ berisi server uji lokal yang menjalankan Code.gs ASLI dengan layanan Google/Gemini palsu (tidak menyentuh Apps Script, spreadsheet, atau kuota Gemini sungguhan) dan 28 tes Playwright. Setiap tes mereset state server (sesi aktif), membuka browser baru, lalu login sebagai siswa lewat layar gerbang. Jalankan: `node tests/mock-backend.js 8787 &` lalu `NODE_PATH=$(npm root -g) node tests/e2e.js`.
 
 ## 5. Menambah topik baru
 
