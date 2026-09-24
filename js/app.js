@@ -18,6 +18,7 @@ const STORAGE_KEY_STUDENT_CLASS = "physicsSandbox.studentClass";
 // untuk mewajibkan siswa mengisi & menyimpan tabel dulu sebelum tombol
 // "Lanjut ke Latihan Soal" boleh membuka pertanyaan konfirmasi Eksperimen.
 const STORAGE_KEY_EKSDATA_SAVED = "physicsSandbox.eksperimenDataSaved";
+const STORAGE_KEY_EKSDATA_LOCAL = "physicsSandbox.eksperimenDataLocal";
 // Penanda bahwa kode sesi guru sudah pernah diterima di perangkat ini (siswa yang
 // belajar di kelas), supaya gerbang tidak meminta kode lagi bila sesi guru
 // berakhir. Nama kunci baru: penanda lama "lewati" tidak boleh meloloskan siapa pun.
@@ -431,10 +432,20 @@ async function submitGateForApproval(stage, summary) {
   const backendUrl = getBackendUrl();
   if (backendUrl) {
     try {
-      await fetch(backendUrl, {
+      const resp = await fetch(backendUrl, {
         method: "POST", headers: { "Content-Type": "text/plain" },
         body: JSON.stringify({ mode: "gate_submit", topicId, studentId, stage, summary: summary || "" })
       });
+      let data = null;
+      try { data = await resp.json(); } catch (e) { data = null; }
+      // Server menjawab error (mis. backend lama yang belum mengenal mode ini):
+      // batalkan status "menunggu" palsu supaya siswa bisa mengirim ulang.
+      if (data && data.error) {
+        setGateCacheEntry(topicId, stage, null);
+        renderGateBanner(stage);
+        showToast(t("gate.submit.failed", { error: String(data.error) }));
+        return;
+      }
     } catch (e) { /* akan tersinkron lagi lewat polling di bawah */ }
   }
   startGatePolling(topicId, stage);
@@ -1200,7 +1211,7 @@ document.getElementById("progress-next-btn").addEventListener("click", () => {
     // menyimpannya minimal sekali dulu sebelum pertanyaan konfirmasi
     // Eksperimen boleh dibuka - lihat wireEksperimenDataTable().
     const needsData = currentTopic.eksperimen && currentTopic.eksperimen.dataTable;
-    if (needsData && !getEksperimenDataSavedFlag(currentTopic.id)) {
+    if (needsData && !getEksperimenDataReadyFlag(currentTopic.id)) {
       showToast(t("toast.eksdata.required"));
       return;
     }
@@ -1393,9 +1404,7 @@ function wireEksperimenDataTable(dt, opts) {
       return;
     }
     try {
-      const resp = await fetch(backendUrl, {
-        method: "POST", headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({
+      const payloadStr = JSON.stringify({
           mode: "eksperimen_data_save",
           // Mode praktikum ikut dicatat di kolom "Topik" spreadsheet agar guru tahu
           // data berasal dari praktikum sederhana atau lab.
@@ -1409,27 +1418,52 @@ function wireEksperimenDataTable(dt, opts) {
             derivedFactor: (typeof dt.derivedFactor === "number") ? dt.derivedFactor : 1
           },
           rows: rows.map(r => ({ I: r.I, values: r.values.map(v => (v === "" || isNaN(parseFloat(v))) ? null : parseFloat(v)) }))
-        })
-      });
-      const data = await resp.json();
-      if (data.error) {
-        statusEl.className = "eks-dt-status eks-dt-status-warn";
-        statusEl.textContent = data.error;
-      } else if (!data.ok) {
-        // Spreadsheet GAGAL ditulis: jangan tandai "tersimpan" (dulu ditandai
-        // tersimpan juga, sehingga siswa lolos syarat "isi & simpan tabel"
-        // padahal datanya tidak pernah sampai ke guru).
-        statusEl.className = "eks-dt-status eks-dt-status-warn";
-        statusEl.textContent = t("eksdata.sheeterror");
-      } else {
+        });
+      const send = (url) => fetch(url, { method: "POST", headers: { "Content-Type": "text/plain" }, body: payloadStr });
+      let resp = await send(backendUrl);
+      let data = null;
+      try { data = await resp.json(); } catch (e) { data = null; }
+      // "Prompt kosong." = URL yang dipakai menjawab dengan backend yang tidak
+      // mengenal mode ini. Penyebab tersering: browser masih menyimpan URL backend
+      // LAMA di Pengaturan (mengalahkan URL baru di config.js). Coba sekali dengan
+      // URL bawaan situs; kalau berhasil, buang URL lama itu.
+      if (data && /^prompt kosong/i.test(String(data.error || "")) &&
+          DEFAULT_BACKEND_URL && backendUrl !== DEFAULT_BACKEND_URL) {
+        try {
+          const r2 = await send(DEFAULT_BACKEND_URL);
+          const d2 = await r2.json();
+          if (d2 && d2.ok) {
+            data = d2;
+            try { localStorage.removeItem(STORAGE_KEY_BACKEND); } catch (e) { /* abaikan */ }
+          }
+        } catch (e) { /* tetap pakai jawaban pertama */ }
+      }
+      if (data && data.ok) {
         setEksperimenDataSavedFlag(currentTopic.id, true);
+        setEksperimenDataLocalFlag(currentTopic.id, false);
         statusEl.className = "eks-dt-status " + (data.flagged ? "eks-dt-status-warn" : "eks-dt-status-ok");
         statusEl.textContent = t("eksdata.saved") + " " + (data.feedback || "");
         if (opts.onSaved) opts.onSaved();
+      } else {
+        // Server TIDAK mengonfirmasi penyimpanan. Penyebab tersering: Apps Script
+        // yang ter-deploy belum versi terbaru sehingga mode "eksperimen_data_save"
+        // tidak dikenal dan jatuh ke handler Gemini ("Prompt kosong."). Data TETAP
+        // aman di perangkat siswa (LKPD menyimpan otomatis) dan siswa boleh lanjut
+        // meminta persetujuan guru; flag "server" sengaja tidak dinyalakan.
+        setEksperimenDataLocalFlag(currentTopic.id, true);
+        const err = data && data.error ? String(data.error) : "";
+        let msgKey = "eksdata.sheeterror";
+        if (/^prompt kosong/i.test(err)) msgKey = "eksdata.staleBackend";
+        else if (err) msgKey = "eksdata.servererror";
+        statusEl.className = "eks-dt-status eks-dt-status-warn";
+        statusEl.textContent = t(msgKey, { error: err });
+        if (opts.onSaved) opts.onSaved();
       }
     } catch (e) {
+      setEksperimenDataLocalFlag(currentTopic.id, true);
       statusEl.className = "eks-dt-status eks-dt-status-warn";
       statusEl.textContent = t("eksdata.networkerror");
+      if (opts.onSaved) opts.onSaved();
     }
     saveBtn.disabled = false;
   });
@@ -1439,6 +1473,24 @@ function getEksperimenDataSavedFlag(topicId) {
     const map = JSON.parse(localStorage.getItem(STORAGE_KEY_EKSDATA_SAVED) || "{}");
     return !!map[topicId];
   } catch (e) { return false; }
+}
+// Flag "data tersimpan lokal saja" (server tidak mengonfirmasi). Dipakai hanya
+// agar siswa tidak terkunci di tab Eksperimen; flag "server" di atas tetap
+// menandai penyimpanan yang benar-benar tiba di spreadsheet guru.
+function getEksperimenDataLocalFlag(topicId) {
+  try {
+    const map = JSON.parse(localStorage.getItem(STORAGE_KEY_EKSDATA_LOCAL) || "{}");
+    return !!map[topicId];
+  } catch (e) { return false; }
+}
+function setEksperimenDataLocalFlag(topicId, val) {
+  let map = {};
+  try { map = JSON.parse(localStorage.getItem(STORAGE_KEY_EKSDATA_LOCAL) || "{}"); } catch (e) { /* abaikan */ }
+  map[topicId] = !!val;
+  try { localStorage.setItem(STORAGE_KEY_EKSDATA_LOCAL, JSON.stringify(map)); } catch (e) { /* abaikan */ }
+}
+function getEksperimenDataReadyFlag(topicId) {
+  return getEksperimenDataSavedFlag(topicId) || getEksperimenDataLocalFlag(topicId);
 }
 function setEksperimenDataSavedFlag(topicId, val) {
   let map = {};
