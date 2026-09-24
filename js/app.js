@@ -982,9 +982,20 @@ function scheduleHideSidebarPeek() {
 });
 
 /* ---------------- Tabs ---------------- */
+// Kalau sebuah tab terkunci karena SESI KELAS aktif (guru menentukan aktivitas
+// tertentu untuk semua siswa), pesan toast HARUS bilang itu secara eksplisit -
+// bukan pesan generik "selesaikan tab sebelumnya dulu", yang menyiratkan siswa
+// belum lulus konfirmasi pemahaman padahal sebenarnya progres individunya
+// sudah benar dan sekadar dikalahkan oleh kunci ketat sesi kelas. Tanpa ini,
+// siswa/guru yang lupa masih tergabung di sesi kelas lama gampang mengira ini
+// bug (tab "tidak mau kebuka" padahal sudah jawab benar), padahal cukup keluar
+// dari sesi kelas atau minta guru memindahkan aktivitas ke tab yang dituju.
+function tabLockToastMessage() {
+  return isInClassSession() ? t("toast.classlocked") : t("toast.tablocked");
+}
 function switchTab(tabName) {
   if (currentTopic && isTabLocked(currentTopic.id, tabName)) {
-    showToast(t("toast.tablocked"));
+    showToast(tabLockToastMessage());
     return;
   }
   document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tabName));
@@ -998,7 +1009,7 @@ function switchTab(tabName) {
 document.querySelectorAll(".tab-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     if (currentTopic && isTabLocked(currentTopic.id, btn.dataset.tab)) {
-      showToast(t("toast.tablocked"));
+      showToast(tabLockToastMessage());
       return;
     }
     switchTab(btn.dataset.tab);
