@@ -49,9 +49,11 @@ async function newContext() {
   return ctx;
 }
 
-/* Masuk sebagai siswa lewat gerbang onboarding.
-   mode: "independent" (belajar mandiri, tanpa kode sesi) atau "session" (gabung sesi guru).
+/* Masuk lewat gerbang onboarding. KEDUA cara belajar wajib memakai kode:
+   mode "independent" = Belajar mandiri (kode belajar mandiri "fisika-merdeka"),
+   mode "session"     = Belajar di kelas (kode sesi dari guru).
    Mengembalikan { page, errors, code }. */
+const SELF_CODE = "fisika-merdeka"; // SELF_STUDY_CODE di js/config.js
 async function loginAsStudent(ctx, { name = "Budi Uji", cls = "XI IPA 2", mode = "independent", sessionCode = null, topicId = TOPIC, tabIndex = 0 } = {}) {
   const page = await ctx.newPage();
   const errors = [];
@@ -60,36 +62,20 @@ async function loginAsStudent(ctx, { name = "Budi Uji", cls = "XI IPA 2", mode =
   await page.goto(BASE + "/index.html");
   await page.fill("#gate-key-input", FAKE_KEY);
   await page.click("#gate-key-save-btn");
-  await page.click("#gate-role-student-btn");
+  await page.click(mode === "session" ? "#gate-role-class-btn" : "#gate-role-self-btn");
   await page.fill("#gate-student-name-input", name);
   await page.fill("#gate-student-class-input", cls);
   await page.click("#gate-student-info-btn");
   let code = sessionCode;
-  const codeStepVisible = await page.locator("#gate-step-student-code").isVisible();
-  if (codeStepVisible) {
-    if (mode === "session" || process.env.LEGACY === "1") {
-      code = code || await startTeacherSession(topicId, tabIndex);
-      await page.fill("#gate-student-code-input", code);
-      await page.click("#gate-student-code-btn");
-    } else {
-      const skip = page.locator("#gate-student-code-skip-btn");
-      if (await skip.count() === 0) throw new Error("Siswa TIDAK bisa masuk tanpa kode sesi guru (tidak ada tombol belajar mandiri)");
-      await skip.click();
-    }
-  } else if (mode === "session") {
-    // gerbang sudah terlewati tanpa langkah kode: gabung lewat Pengaturan
+  if (mode === "session") {
     code = code || await startTeacherSession(topicId, tabIndex);
-    await page.click("#settings-btn");
-    await page.locator("#settings-modal details:has(#class-session-code-input) summary").click();
-    await page.fill("#class-session-code-input", code);
-    await page.click("#class-session-join-btn");
-    await page.click("#settings-close-x");
+    await page.fill("#gate-student-code-input", code);
+    await page.click("#gate-student-code-btn");
+  } else {
+    await page.fill("#gate-self-code-input", SELF_CODE);
+    await page.click("#gate-self-code-btn");
   }
   await page.waitForSelector("#site-shell:not([hidden])", { timeout: 5000 });
-  if (process.env.LEGACY === "1" && mode === "independent") {
-    // Hanya untuk membandingkan dengan kode LAMA (yang memaksa kode sesi): keluar dari sesi diam-diam.
-    await page.evaluate(() => { localStorage.removeItem(STORAGE_KEY_CLASS_CODE); classSession = null; stopClassSync(); renderNav(); });
-  }
   return { page, errors, code };
 }
 
@@ -191,10 +177,16 @@ test("T6 chatbot: ganti topik saat panel tertutup tidak menyisakan obrolan topik
   assert(!texts.some(x => /jarak dan perpindahan/.test(x)), "obrolan Kinematics masih tampil di topik Magnetic Fields");
 });
 
-async function reachEksperimen(page) {
+async function useMode(page, mode) {
+  await page.click(`[data-eks-mode="${mode}"]`);
+  await page.waitForSelector(`.lkpd[data-mode="${mode}"] .eks-datatable`);
+}
+// mode "lab" = kolom arus tetap (0,50-2,50 A); mode "simple" = kolom arus diisi siswa.
+async function reachEksperimen(page, mode = "lab") {
   await openTopic(page);
   await answerMateriGate(page, 5);
   await page.waitForSelector(".eks-datatable");
+  if (mode) await useMode(page, mode);
 }
 
 test("T7 simpan tabel: rata-rata mengabaikan sel kosong", async ctx => {
@@ -383,6 +375,7 @@ test("T17 guru melihat tingkat belajar siswa di roster & ringkasan konfirmasi", 
   // konfirmasi Eksperimen: ringkasan diawali tingkat
   await answerMateriGate(page, 5);
   await page.waitForSelector(".eks-datatable");
+  await useMode(page, "lab");
   await page.fill('.eks-dt-input[data-row="0"][data-col="0"]', "10");
   await page.click("#eks-dt-save-btn");
   await page.waitForFunction(() => /tersimpan/i.test(document.getElementById("eks-dt-status").textContent));
@@ -463,6 +456,291 @@ test("T21 mode English: tidak ada kunci i18n mentah di UI baru", async ctx => {
   }
   assert(/Foundation|Core|Extension/.test(await chipText(page)), "chip tingkat tidak berbahasa Inggris");
 });
+
+
+/* ---------------- LKPD interaktif, mode praktikum, latihan ---------------- */
+async function goTab(page, tab) {
+  await page.evaluate(t => { advanceProgress(currentTopic.id, 3); switchTab(t); }, tab);
+}
+
+test("T22 latihan: kunci jawaban tidak terlihat sebelum Cek Jawaban", async ctx => {
+  const { page } = await loginAsStudent(ctx, { mode: "independent" });
+  await openTopic(page);
+  await goTab(page, "latihan");
+  const before = await page.evaluate(() => document.getElementById("panel-latihan").innerText);
+  assert(!/jawaban benar|correct answer/i.test(before), "label jawaban benar sudah terlihat sebelum dicek");
+  assert(await page.locator("#panel-latihan .latihan-q .opt-correct-tag").count() === 0, "tag jawaban benar ada di DOM sebelum dicek");
+  assert(await page.locator("#panel-latihan .latihan-q .solution.show").count() === 0, "pembahasan terbuka sebelum dicek");
+  // klik Cek Jawaban tanpa memilih -> hanya peringatan, kunci tetap tersembunyi
+  const first = page.locator("#panel-latihan .latihan-q").first();
+  const isMcq = await first.locator("input[type=radio]").count() > 0;
+  assert(isMcq, "soal pertama seharusnya pilihan ganda");
+  await first.locator(".latihan-check-btn").click();
+  assert(await first.locator(".opt-correct-tag").count() === 0, "kunci muncul padahal belum memilih jawaban");
+  // pilih jawaban SALAH lalu cek -> kunci + pembahasan muncul
+  const correct = await page.evaluate(() => currentTopic.latihan[0].correct);
+  const wrong = (correct + 1) % 4;
+  await first.locator(`input[type=radio][value="${wrong}"]`).check();
+  await first.locator(".latihan-check-btn").click();
+  assert(await first.locator(`li.opt-correct .opt-correct-tag`).count() === 1, "kunci tidak muncul setelah Cek Jawaban");
+  assert(await first.locator(`li.opt-wrong`).count() === 1, "pilihan salah tidak ditandai");
+  assert(await first.locator(".solution.show").count() === 1, "pembahasan tidak muncul setelah cek");
+  // kunci hanya pada soal yang dicek, soal lain tetap tersembunyi
+  assert(await page.locator("#panel-latihan .opt-correct-tag").count() === 1, "kunci soal lain ikut terbuka");
+});
+
+test("T23 eksperimen: tanpa tabel kosong statis; dua mode praktikum dengan alat berbeda", async ctx => {
+  const { page, errors } = await loginAsStudent(ctx, { mode: "independent" });
+  await reachEksperimen(page, null);
+  // default: praktikum sederhana
+  assert(await page.locator('.lkpd[data-mode="simple"]').count() === 1, "mode bawaan bukan Praktikum Sederhana");
+  assert(await page.locator("[data-eks-mode]").count() === 2, "harus ada 2 pilihan mode");
+  // teks isi LKPD saja (kartu pemilih mode menampilkan ringkasan KEDUA mode)
+  const bodyTxt = () => page.evaluate(() => Array.from(document.querySelectorAll(".lkpd > section")).map(x => x.innerText).join("\n"));
+  const simpleTxt = await bodyTxt();
+  assert(/timbangan digital dapur/i.test(simpleTxt) && /multimeter/i.test(simpleTxt), "alat sehari-hari tidak tercantum");
+  assert(!/EM-8607|PEI 300/.test(simpleTxt), "kit lab muncul di mode sederhana");
+  // tidak ada sel tabel kosong yang tidak bisa diisi
+  const dead = await page.evaluate(() => Array.from(document.querySelectorAll("#panel-eksperimen td")).filter(td => !td.children.length && !td.textContent.trim() && !td.classList.contains("eks-dt-avg")).length);
+  assert(dead === 0, dead + " sel tabel kosong tanpa input");
+  await useMode(page, "lab");
+  const labTxt = await bodyTxt();
+  assert(/EM-8607/.test(labTxt) && /P2410601/.test(labTxt) && /FU-04/.test(labTxt) && /PEK 500/.test(labTxt) && /PEI 300/.test(labTxt), "kit lab (PASCO/PHYWE/Pudak) tidak lengkap");
+  assert(/neraca elektronik/i.test(labTxt), "neraca elektronik lab tidak tercantum");
+  assert(!/hard disk/i.test(labTxt), "bahan sederhana muncul di mode lab");
+  const hrefs = await page.$$eval(".lkpd-kit a", as => as.map(a => a.href + "|" + a.rel));
+  assert(hrefs.length >= 5 && hrefs.every(h => /^https:/.test(h) && /noopener/.test(h)), "tautan kit tidak aman/lengkap: " + hrefs);
+  // pilihan mode diingat setelah muat ulang
+  await page.reload();
+  await page.waitForSelector("#site-shell:not([hidden])");
+  await openTopic(page);
+  await page.evaluate(() => { advanceProgress(currentTopic.id, 3); switchTab("eksperimen"); });
+  assert(await page.locator('.lkpd[data-mode="lab"]').count() === 1, "mode lab tidak diingat");
+  assert(errors.length === 0, "error konsol: " + errors.join(" | "));
+});
+
+test("T24 LKPD sederhana: tabel bisa diisi, grafik & B otomatis, cek jawaban, simpan, dan tersimpan setelah reload", async ctx => {
+  const { page, errors } = await loginAsStudent(ctx, { mode: "independent" });
+  await reachEksperimen(page, "simple");
+  // data sintetis: N=10, L=2 cm, B=0,2 T -> gradien NBL = 0,04 N/A -> dm (g) = 0,04*I/9,81*1000
+  const Is = [0.2, 0.4, 0.6, 0.8];
+  for (let r = 0; r < Is.length; r++) {
+    await page.fill(`.eks-dt-ind[data-row="${r}"]`, String(Is[r]));
+    const dm = (0.04 * Is[r] / 9.81 * 1000).toFixed(4);
+    for (let c = 0; c < 3; c++) await page.fill(`.eks-dt-input[data-row="${r}"][data-col="${c}"]`, dm);
+  }
+  await page.fill('[data-var="L"]', "2");
+  await page.fill('[data-var="N"]', "10");
+  const res = await page.textContent("#lkpd-graph");
+  assert(/B = 0,20\d? T/.test(res) || /B = 0,2 T/.test(res), "B otomatis salah: " + res.replace(/\s+/g, " ").slice(0, 300));
+  assert(await page.locator("#lkpd-graph svg circle.pt").count() === 4, "titik grafik tidak 4");
+  assert(await page.locator("#lkpd-graph svg line.fit").count() === 1, "garis terbaik tidak ada");
+  // soal hitungan: jawaban benar & salah
+  const calc = page.locator('.lkpd-q[data-q="calcB"]');
+  await calc.locator("input[data-calc]").fill("0.5");
+  await calc.locator("[data-check]").click();
+  assert(/Belum tepat/.test(await calc.locator(".lkpd-fb").textContent()), "jawaban B salah tidak ditolak");
+  await calc.locator("input[data-calc]").fill("0.21");
+  await calc.locator("[data-check]").click();
+  assert(/Benar/.test(await calc.locator(".lkpd-fb").textContent()), "jawaban B dalam toleransi 15% tidak diterima");
+  // pilihan ganda: tidak ada kunci sebelum dicek
+  const q = page.locator('.lkpd-q[data-q="reverse"]');
+  assert(await q.locator(".opt-correct-tag").count() === 0, "kunci soal LKPD terlihat sebelum dicek");
+  await q.locator('input[value="0"]').check();
+  await q.locator("[data-check]").click();
+  assert(await q.locator(".opt-correct-tag").count() === 1 && await q.locator(".opt-wrong").count() === 1, "penanda benar/salah tidak muncul");
+  // isian bebas + ceklis
+  await page.fill('[data-open="errors"]', "Kawat menyentuh magnet dan arus turun karena baterai melemah.");
+  await page.locator('[data-tick]').first().check();
+  // simpan tabel: butuh kolom I; mode sederhana kirim label mode ke kolom Topik
+  await page.click("#eks-dt-save-btn");
+  await page.waitForFunction(() => /tersimpan|saved/i.test(document.getElementById("eks-dt-status").textContent), null, { timeout: 5000 });
+  const sheet = Object.values((await serverState()).sheets)[0];
+  assert(sheet.rows.length === 5 || sheet.rows.length === 4 || sheet.rows.length >= 4, "baris sheet tidak sesuai: " + sheet.rows.length);
+  assert(String(sheet.rows[0][1]).includes("(simple)"), "kolom Topik tidak memuat mode: " + sheet.rows[0][1]);
+  assert(Math.abs(sheet.rows[0][2] - 0.2) < 1e-9, "kolom I harus 0,2: " + sheet.rows[0]);
+  // muat ulang: semua pekerjaan pulih
+  await page.reload();
+  await page.waitForSelector("#site-shell:not([hidden])");
+  await openTopic(page);
+  await page.evaluate(() => { advanceProgress(currentTopic.id, 3); switchTab("eksperimen"); });
+  await page.waitForSelector(".lkpd .eks-datatable");
+  assert(await page.inputValue('.eks-dt-ind[data-row="1"]') === "0.4", "isian I tidak pulih");
+  assert(await page.inputValue('[data-var="L"]') === "2", "ukuran L tidak pulih");
+  assert((await page.inputValue('[data-open="errors"]')).includes("menyentuh magnet"), "isian bebas tidak pulih");
+  assert(await page.locator('.lkpd-q[data-q="calcB"] .lkpd-fb').textContent().then(x => /Benar/.test(x)), "status cek jawaban tidak pulih");
+  assert(await page.locator("#lkpd-graph svg circle.pt").count() === 4, "grafik tidak pulih");
+  assert(/kelengkapan/i.test(await page.textContent("#lkpd-progress")), "progres LKPD tidak tampil");
+  assert(errors.length === 0, "error konsol: " + errors.join(" | "));
+});
+
+test("T25 LKPD: simpan tabel mode sederhana ditolak bila kolom I kosong", async ctx => {
+  const { page } = await loginAsStudent(ctx, { mode: "independent" });
+  await reachEksperimen(page, "simple");
+  await page.fill('.eks-dt-input[data-row="0"][data-col="0"]', "1.5");
+  await page.click("#eks-dt-save-btn");
+  await page.waitForFunction(() => document.getElementById("eks-dt-status").textContent.length > 0);
+  assert(/I \(A\)/.test(await page.textContent("#eks-dt-status")), "pesan wajib isi kolom I tidak tampil");
+  assert(Object.keys((await serverState()).sheets).length === 0, "data tanpa I tetap terkirim ke spreadsheet");
+  assert(!(await page.evaluate(() => getEksperimenDataSavedFlag("magnetic-fields"))), "ditandai tersimpan padahal ditolak");
+});
+
+test("T26 LKPD lab: B dihitung dengan N=1; petunjuk & pengayaan mengikuti tingkat belajar", async ctx => {
+  const { page } = await loginAsStudent(ctx, { mode: "independent" });
+  await reachEksperimen(page, "lab");
+  // B = 0,3 T, L = 4 cm -> gradien 0,012 N/A
+  const Is = [0.5, 1.0, 1.5, 2.0, 2.5];
+  for (let r = 0; r < Is.length; r++) {
+    const dm = (0.012 * Is[r] / 9.81 * 1000).toFixed(5);
+    for (let c = 0; c < 3; c++) await page.fill(`.eks-dt-input[data-row="${r}"][data-col="${c}"]`, dm);
+  }
+  await page.fill('[data-var="L"]', "4");
+  assert(/B = 0,3\d* T/.test(await page.textContent("#lkpd-graph")), "B mode lab salah: " + (await page.textContent("#lkpd-graph")).replace(/\s+/g, " ").slice(0, 200));
+  // tingkat dasar: petunjuk terbuka, tanpa soal pengayaan
+  await page.selectOption("#ability-select", "dasar");
+  await page.waitForSelector('.lkpd[data-mode="lab"]');
+  assert(await page.locator('.lkpd details.lkpd-hint[open]').count() > 0, "petunjuk tidak terbuka untuk tingkat dasar");
+  assert(await page.locator('.lkpd-q[data-q="extra-length"]').count() === 0, "soal pengayaan tampil untuk tingkat dasar");
+  await page.selectOption("#ability-select", "lanjut");
+  assert(await page.locator('.lkpd-q[data-q="extra-length"]').count() === 1, "soal pengayaan tidak tampil untuk tingkat lanjut");
+  assert(await page.locator('.lkpd details.lkpd-hint[open]').count() === 0, "petunjuk terbuka otomatis untuk tingkat lanjut");
+  // data tidak hilang saat tingkat berubah (gambar ulang)
+  assert(await page.inputValue('[data-var="L"]') === "4", "data hilang setelah ganti tingkat");
+  // ringkasan LKPD ikut ke guru
+  await page.evaluate(() => { const c = lkpdSummaryText(); window.__sum = c; });
+  assert(/LKPD/.test(await page.evaluate(() => window.__sum)), "ringkasan LKPD kosong");
+});
+
+test("T27 topik tanpa LKPD: tabel statis di teks eksperimen bisa diisi (tidak ada sel mati)", async ctx => {
+  const { page } = await loginAsStudent(ctx, { mode: "independent" });
+  await openTopic(page, "kinematics");
+  await page.evaluate(() => { advanceProgress(currentTopic.id, 3); switchTab("eksperimen"); });
+  const info = await page.evaluate(() => {
+    const cells = Array.from(document.querySelectorAll("#panel-eksperimen table td"));
+    return { empty: cells.filter(td => !td.children.length && !td.textContent.trim()).length, inputs: document.querySelectorAll("#panel-eksperimen input.lkpd-cell").length };
+  });
+  assert(info.inputs > 0, "sel kosong tidak diubah menjadi input");
+  assert(info.empty === 0, info.empty + " sel kosong tanpa input tersisa");
+  await page.locator("#panel-eksperimen input.lkpd-cell").first().fill("12,5");
+  assert(await page.locator("#panel-eksperimen input.lkpd-cell").first().inputValue() === "12,5", "sel tidak bisa diisi");
+});
+
+test("T28 mode English: LKPD tanpa kunci i18n mentah", async ctx => {
+  const { page } = await loginAsStudent(ctx, { mode: "independent" });
+  await page.evaluate(() => localStorage.setItem("physicsSandbox.lang", "en"));
+  await page.reload();
+  await page.waitForSelector("#site-shell:not([hidden])");
+  await openTopic(page);
+  await page.evaluate(() => { advanceProgress(currentTopic.id, 3); switchTab("eksperimen"); });
+  await page.waitForSelector(".lkpd .eks-datatable");
+  for (const mode of ["simple", "lab"]) {
+    await page.click(`[data-eks-mode="${mode}"]`);
+    await page.waitForSelector(`.lkpd[data-mode="${mode}"]`);
+    await page.selectOption("#ability-select", "lanjut");
+    const txt = await page.evaluate(() => document.getElementById("panel-eksperimen").innerText);
+    const raw = txt.match(/\b(lkpd|eksdata|diff|ability|extra|level|gate|question)\.[a-z0-9]+(\.[a-z0-9]+)*/g);
+    assert(!raw, `kunci i18n mentah (${mode}): ${raw}`);
+    assert(/Check Answer/.test(txt) && /Data Table/.test(txt), `teks Inggris tidak lengkap (${mode})`);
+    assert(!/Hitung rapat fluks|Langkah Kerja/.test(txt), `teks Indonesia bocor di mode English (${mode})`);
+  }
+});
+
+
+/* ---------------- Gerbang: belajar di kelas / mandiri, keduanya wajib kode ---------------- */
+async function gateToInfo(ctx, roleBtn) {
+  const page = await ctx.newPage();
+  await page.goto(BASE + "/index.html");
+  await page.fill("#gate-key-input", FAKE_KEY);
+  await page.click("#gate-key-save-btn");
+  await page.click(roleBtn);
+  await page.fill("#gate-student-name-input", "Tes Gerbang");
+  await page.fill("#gate-student-class-input", "X A");
+  await page.click("#gate-student-info-btn");
+  return page;
+}
+
+test("T29 gerbang: pilihan 'Belajar di kelas' / 'Belajar mandiri' (tanpa siswa/bukan siswa), tanpa tombol lewati", async ctx => {
+  const page = await ctx.newPage();
+  await page.goto(BASE + "/index.html");
+  await page.fill("#gate-key-input", FAKE_KEY);
+  await page.click("#gate-key-save-btn");
+  const txt = await page.textContent("#gate-step-role");
+  assert(/Belajar di kelas/.test(txt) && /Belajar mandiri/.test(txt), "pilihan cara belajar tidak tampil: " + txt.replace(/\s+/g, " "));
+  assert(!/Saya siswa|Bukan siswa/i.test(txt), "pilihan lama siswa/bukan siswa masih ada");
+  assert(await page.locator("#gate-role-student-btn, #gate-role-guest-btn, #gate-student-code-skip-btn").count() === 0, "tombol lama (siswa/bukan siswa/lewati) masih ada");
+  assert(await page.locator("#gate-role-class-btn").count() === 1 && await page.locator("#gate-role-self-btn").count() === 1, "tombol cara belajar tidak lengkap");
+});
+
+test("T30 gerbang belajar mandiri: wajib kode fisika-merdeka (salah ditolak, kapital diterima), tanpa unlock-all", async ctx => {
+  const page = await gateToInfo(ctx, "#gate-role-self-btn");
+  assert(await page.locator("#gate-step-self-code").isVisible(), "langkah kode belajar mandiri tidak tampil");
+  assert(await page.locator("#site-shell").isHidden(), "situs terbuka sebelum kode diisi");
+  await page.click("#gate-self-code-btn");
+  assert(/dulu/.test(await page.textContent("#gate-self-code-status")), "kode kosong tidak ditolak");
+  await page.fill("#gate-self-code-input", "koderahasia"); // kode guru BUKAN kode mandiri
+  await page.click("#gate-self-code-btn");
+  assert(/salah/i.test(await page.textContent("#gate-self-code-status")), "kode salah tidak ditolak");
+  assert(await page.locator("#site-shell").isHidden(), "situs terbuka dengan kode salah");
+  await page.fill("#gate-self-code-input", "Fisika-Merdeka");
+  await page.click("#gate-self-code-btn");
+  await page.waitForSelector("#site-shell:not([hidden])", { timeout: 5000 });
+  // belajar mandiri tetap bertahap (80%), bukan membuka semua tab
+  assert(!(await page.evaluate(() => isUnlockAll())), "kode belajar mandiri membuka semua topik/tab (unlock-all)");
+  await openTopic(page);
+  await page.evaluate(() => switchTab("lab"));
+  assert(await activeTab(page) === "materi", "tab Lab terbuka tanpa melewati Materi");
+  // reload: tidak meminta kode lagi
+  await page.reload();
+  await page.waitForSelector("#site-shell:not([hidden])", { timeout: 5000 });
+});
+
+test("T31 gerbang belajar di kelas: wajib kode sesi guru (salah/tanpa sesi ditolak), tanpa opsi lewati", async ctx => {
+  const page = await gateToInfo(ctx, "#gate-role-class-btn");
+  assert(await page.locator("#gate-step-student-code").isVisible(), "langkah kode sesi tidak tampil");
+  assert(await page.locator("#gate-student-code-skip-btn").count() === 0, "masih ada tombol lewati");
+  await page.click("#gate-student-code-btn");
+  assert(await page.locator("#site-shell").isHidden(), "situs terbuka tanpa kode");
+  await page.fill("#gate-student-code-input", "SALAH1");
+  await page.click("#gate-student-code-btn");
+  await page.waitForFunction(() => document.getElementById("gate-student-code-status").textContent.length > 0 && !document.getElementById("gate-student-code-btn").disabled);
+  assert(await page.locator("#site-shell").isHidden(), "situs terbuka dengan kode sesi salah");
+  // kode mandiri BUKAN kode kelas
+  await page.fill("#gate-student-code-input", SELF_CODE);
+  await page.click("#gate-student-code-btn");
+  await page.waitForFunction(() => !document.getElementById("gate-student-code-btn").disabled);
+  assert(await page.locator("#site-shell").isHidden(), "kode belajar mandiri meloloskan siswa kelas");
+  const code = await startTeacherSession();
+  await page.fill("#gate-student-code-input", code);
+  await page.click("#gate-student-code-btn");
+  await page.waitForSelector("#site-shell:not([hidden])", { timeout: 5000 });
+  // guru mengakhiri sesi: siswa tetap belajar, tidak diseret ke gerbang
+  await api({ mode: "teacher_session", controlCode: CONTROL_CODE, action: "end" });
+  await page.evaluate(() => syncClassSession());
+  await page.waitForTimeout(500);
+  assert(await page.locator("#site-shell").isVisible(), "siswa kelas dilempar ke gerbang setelah sesi berakhir");
+});
+
+test("T32 gerbang: penanda 'lewati' versi lama tidak meloloskan; ulangi proses awal kembali ke pilihan cara belajar", async ctx => {
+  const page = await ctx.newPage();
+  await page.addInitScript(() => { try { localStorage.setItem("physicsSandbox.sessionStepDone", "1"); localStorage.setItem("physicsSandbox.userRole", "student"); } catch (e) {} });
+  await page.goto(BASE + "/index.html");
+  await page.fill("#gate-key-input", FAKE_KEY);
+  await page.click("#gate-key-save-btn");
+  // peran lama "student" dinormalkan menjadi kelas, tetapi tetap butuh nama & kode sesi
+  await page.fill("#gate-student-name-input", "Lama");
+  await page.fill("#gate-student-class-input", "X");
+  await page.click("#gate-student-info-btn");
+  assert(await page.locator("#gate-step-student-code").isVisible(), "penanda lewati lama meloloskan siswa tanpa kode");
+  // Ulangi proses awal (Pengaturan) kembali ke pilihan cara belajar, dan kode mandiri diminta lagi
+  await page.click("#gate-student-code-back-btn");
+  await page.evaluate(() => { localStorage.setItem("physicsSandbox.userRole", "self"); localStorage.setItem("physicsSandbox.selfCodeOk", "1"); applyGate(); });
+  await page.waitForSelector("#site-shell:not([hidden])", { timeout: 5000 });
+  await page.click("#settings-btn");
+  await page.click("#settings-reset-onboarding-btn");
+  assert(await page.locator("#gate-step-role").isVisible(), "reset tidak kembali ke pilihan cara belajar");
+  assert(await page.evaluate(() => localStorage.getItem("physicsSandbox.selfCodeOk")) === null, "penanda kode mandiri tidak dihapus saat reset");
+});
+
 
 /* ---------------- runner ---------------- */
 (async () => {
