@@ -1159,3 +1159,49 @@ code {
   .quiz-toggle-btn { right: 12px; bottom: 78px; padding: 11px 14px; }
   .quiz-toggle-btn span { display: none; }
 }
+
+
+/* ============================================================
+   Differentiated learning (tingkat belajar siswa)
+   ============================================================ */
+.ability-bar {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px;
+  margin: 0 0 14px; padding: 10px 14px;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.ability-label { font-weight: 600; font-size: 0.92rem; }
+.ability-chip {
+  display: inline-block; padding: 2px 12px; border-radius: 999px;
+  font-weight: 700; font-size: 0.85rem; background: var(--accent-soft); color: var(--accent-dark);
+}
+.ability-chip[data-level="dasar"] { background: var(--warn-soft); color: var(--warn); }
+.ability-chip[data-level="lanjut"] { background: rgba(147,51,234,0.10); color: var(--a2-color); }
+.ability-select {
+  margin-left: auto; padding: 5px 8px; font: inherit; font-size: 0.85rem;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--panel-light); color: var(--text);
+}
+.ability-desc { flex-basis: 100%; margin: 0; }
+
+.diff-card {
+  margin: 0 0 16px; padding: 12px 16px;
+  background: var(--panel-light); border: 1px solid var(--border);
+  border-left: 4px solid var(--accent); border-radius: var(--radius-md);
+}
+.diff-card h4 { margin: 0 0 6px; font-size: 1rem; }
+.diff-card ol, .diff-card ul { margin: 6px 0 10px 20px; padding: 0; }
+.diff-card li { margin: 2px 0; }
+.diff-dasar { border-left-color: var(--warn); }
+.diff-lanjut { border-left-color: var(--a2-color); }
+.diff-formula { margin: 8px 0; }
+.diff-formula summary { cursor: pointer; font-weight: 600; }
+.diff-formula-text {
+  white-space: pre-wrap; font-family: inherit; font-size: 0.9rem;
+  margin: 6px 0 0; padding: 8px 10px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
+.extra-practice { margin-top: 20px; border-left-color: var(--accent-2); }
+.extra-q { margin-top: 12px; }
+.level-tag { font-size: 0.72rem; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-dark); vertical-align: middle; }
+.level-tag.level-dasar { background: var(--warn-soft); color: var(--warn); }
+.level-tag.level-lanjut { background: rgba(147,51,234,0.10); color: var(--a2-color); }
+#gate-student-code-skip-btn { margin-top: 10px; }
