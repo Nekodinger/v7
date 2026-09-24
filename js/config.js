@@ -17,7 +17,7 @@
    berguna untuk testing tanpa perlu commit ke repo).
    ============================================================ */
 
-const DEFAULT_BACKEND_URL = "https://script.google.com/macros/s/AKfycbyR9-69ZKXEOmSHPY_iDFM0MZ2WEb57NyLdHPCYEB5oqOuyAG8q4IosI0cJwm6xTZUXlw/exec";
+const DEFAULT_BACKEND_URL = "https://script.google.com/macros/s/AKfycbx28uwByhHg3wFrbPDqypCLybDi0A9MleGLdjKoKyC5yNP4WMe4iDA6q41yGvMMUH4pFg/exec";
 
 /* ============================================================
    KODE EKSPLORASI BEBAS (untuk guru)
