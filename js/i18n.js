@@ -406,6 +406,9 @@ const I18N_STRINGS = {
   "vlab.empty": { id: "Isi prediksi (2a) dan minimal satu baris data tabel dulu sebelum menyimpan.", en: "Fill in your prediction (2a) and at least one row of table data before saving." },
   "vlab.graph.axis.i": { id: "I (A)", en: "I (A)" },
   "vlab.graph.axis.f": { id: "F (N)", en: "F (N)" },
+  "vlab.diagram.alt": { id: "Animasi skema alat: catu daya dan amperemeter di kiri, kawat berarus melewati celah sepasang magnet Magnadur, magnet bertumpu di atas neraca timbang elektronik yang menampilkan pembacaan.", en: "Animated apparatus schematic: DC supply and ammeter on the left, current-carrying wire passing through the gap between a pair of Magnadur magnets, the magnets resting on an electronic top-pan balance showing the reading." },
+  "vlab.diagram.balance": { id: "Neraca Timbang Elektronik", en: "Electronic Top-Pan Balance" },
+  "vlab.diagram.supply": { id: "Catu Daya + Amperemeter", en: "DC Supply + Ammeter" },
 
   /* ---------------- Kuis Topik (Panel Guru + siswa) ---------------- */
   "quiz.section.title": { id: "Kuis Topik", en: "Topic Quiz" },

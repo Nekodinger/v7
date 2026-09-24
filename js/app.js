@@ -1477,6 +1477,84 @@ function computeVirtualReadingGrams(topic, I) {
   return Math.max(0, noisy);
 }
 
+// Skema alat virtual (statis, tidak bergantung topik/bahasa) - kawat berarus
+// dari catu daya+amperemeter di kiri, melewati celah sepasang magnet Magnadur
+// pada yoke besi lunak, magnet bertumpu di atas neraca timbang elektronik di
+// kanan. Digambar sebagai SVG inline (bukan gambar statis) supaya bisa
+// dianimasikan lewat CSS (arus mengalir di kawat) dan JS (jarum amperemeter +
+// angka neraca) - lihat updateVlabAmmeter()/animateBalanceReading() di bawah.
+// Urutan elemen SENGAJA wire dulu baru magnet supaya blok magnet menutupi
+// kawat di bagian yang "masuk" ke dalam magnet, hanya terlihat di celahnya.
+function renderVlabApparatusSVG() {
+  return `
+    <svg class="vlab-diagram" viewBox="0 0 340 215" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${escapeAttr(t("vlab.diagram.alt"))}">
+      <path class="vlab-wire-flow" d="M125,140 L160,140 L160,90 L300,90 L300,140 L125,140" fill="none" stroke="#c17a3f" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="183" y="108" width="94" height="10" rx="2" fill="var(--muted)"/>
+      <rect x="183" y="68" width="22" height="44" rx="3" fill="#b23b3b"/>
+      <text x="194" y="94" font-size="10" fill="#ffffff" text-anchor="middle" font-weight="700">N</text>
+      <rect x="255" y="68" width="22" height="44" rx="3" fill="#3b6bb2"/>
+      <text x="266" y="94" font-size="10" fill="#ffffff" text-anchor="middle" font-weight="700">S</text>
+      <rect x="170" y="118" width="120" height="8" fill="var(--muted)"/>
+      <rect x="150" y="126" width="160" height="55" rx="8" fill="var(--panel-light)" stroke="var(--border)" stroke-width="1.5"/>
+      <rect x="195" y="140" width="70" height="26" rx="3" fill="#0d1f16"/>
+      <text id="vlab-balance-display" x="230" y="158" font-family="'Courier New', monospace" font-size="14" fill="#3ee879" text-anchor="middle">0,00 g</text>
+      <text x="230" y="196" font-size="8.5" fill="var(--muted)" text-anchor="middle">${t("vlab.diagram.balance")}</text>
+      <rect x="15" y="125" width="110" height="75" rx="8" fill="var(--panel-light)" stroke="var(--border)" stroke-width="1.5"/>
+      <circle cx="70" cy="155" r="24" fill="var(--panel)" stroke="var(--border)" stroke-width="2"/>
+      <line x1="70" y1="139" x2="70" y2="134" stroke="var(--muted)" stroke-width="1.5"/>
+      <line x1="49.2" y1="146.2" x2="45.7" y2="141.3" stroke="var(--muted)" stroke-width="1.5"/>
+      <line x1="90.8" y1="146.2" x2="94.3" y2="141.3" stroke="var(--muted)" stroke-width="1.5"/>
+      <line x1="42" y1="163" x2="37" y2="164.5" stroke="var(--muted)" stroke-width="1.5"/>
+      <line x1="98" y1="163" x2="103" y2="164.5" stroke="var(--muted)" stroke-width="1.5"/>
+      <line id="vlab-ammeter-needle" class="vlab-ammeter-needle" x1="70" y1="155" x2="70" y2="134" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"/>
+      <circle cx="70" cy="155" r="3" fill="var(--text)"/>
+      <text x="70" y="146" font-size="8" fill="var(--muted)" text-anchor="middle">A</text>
+      <text x="70" y="212" font-size="8.5" fill="var(--muted)" text-anchor="middle">${t("vlab.diagram.supply")}</text>
+    </svg>
+  `;
+}
+
+// Jarum amperemeter mengikuti nilai arus yang dipilih siswa di dropdown -
+// dipetakan linear dari rentang nilai arus yang ada di dataTable topik ini
+// ke sudut -60..+60 derajat (0 derajat = jarum tegak lurus ke atas).
+function updateVlabAmmeter(vl, I) {
+  const needle = document.getElementById("vlab-ammeter-needle");
+  if (!needle) return;
+  const vals = vl.dataTable.independentValues;
+  const minI = Math.min(...vals);
+  const maxI = Math.max(...vals);
+  const frac = maxI > minI ? (I - minI) / (maxI - minI) : 0.5;
+  const angle = -60 + frac * 120;
+  needle.style.transform = "rotate(" + angle.toFixed(1) + "deg)";
+}
+
+// Animasi angka neraca digital menghitung naik dari 0 ke nilai pembacaan
+// (bukan langsung muncul angka jadi) supaya terasa seperti benar-benar
+// menunggu alat "mengukur", meniru pengalaman membaca neraca elektronik
+// sungguhan yang angkanya bergerak sebelum stabil.
+function animateBalanceReading(targetGrams, onDone) {
+  const disp = document.getElementById("vlab-balance-display");
+  if (!disp || typeof requestAnimationFrame !== "function") {
+    if (disp) disp.textContent = targetGrams.toFixed(2) + " g";
+    onDone();
+    return;
+  }
+  const duration = 550;
+  const startTime = performance.now();
+  function step(now) {
+    const p = Math.min(1, (now - startTime) / duration);
+    const val = targetGrams * p;
+    disp.textContent = val.toFixed(2) + " g";
+    if (p < 1) {
+      requestAnimationFrame(step);
+    } else {
+      disp.textContent = targetGrams.toFixed(2) + " g";
+      onDone();
+    }
+  }
+  requestAnimationFrame(step);
+}
+
 function renderVirtualLabHTML(vl) {
   const dt = vl.dataTable;
   const rowsHTML = dt.independentValues.map((iVal, ri) => {
@@ -1501,7 +1579,10 @@ function renderVirtualLabHTML(vl) {
     <h3>${trContent(vl.title)}</h3>
     ${trContent(vl.intro)}
 
-    <div class="vlab-apparatus">
+    <div class="vlab-apparatus" id="vlab-apparatus-box">
+      <div class="vlab-diagram-wrap">
+        ${renderVlabApparatusSVG()}
+      </div>
       <p><strong>${t("vlab.apparatus.length")}:</strong> $L$ = ${vl.apparatus.lengthM.toFixed(4)} m
         (${(vl.apparatus.lengthM * 100).toFixed(2)} cm)</p>
       <label>${t("vlab.current.label")}
@@ -1607,6 +1688,13 @@ function wireVirtualLab(topic, vl) {
   const bInput = card.querySelector("#vlab-b-input");
   const conclInput = card.querySelector("#vlab-conclusion");
 
+  // Jarum amperemeter langsung mengikuti pilihan arus (bahkan sebelum tombol
+  // Baca Neraca diklik) supaya terasa seperti alat sungguhan yang menyala -
+  // diset sekali di awal render, lalu tiap kali dropdown arus diganti.
+  const apparatusBox = card.querySelector("#vlab-apparatus-box");
+  updateVlabAmmeter(vl, parseFloat(select.value));
+  select.addEventListener("change", () => updateVlabAmmeter(vl, parseFloat(select.value)));
+
   readBtn.addEventListener("click", () => {
     const I = parseFloat(select.value);
     const tr = Array.from(table.querySelectorAll("tbody tr"))
@@ -1619,9 +1707,16 @@ function wireVirtualLab(topic, vl) {
       return;
     }
     const grams = computeVirtualReadingGrams(topic, I);
-    emptyInput.value = grams.toFixed(2);
-    readingStatus.textContent = t("vlab.reading.result", { grams: grams.toFixed(2) });
-    recalcVlabRow(tr);
+    readBtn.disabled = true;
+    readingStatus.textContent = "";
+    if (apparatusBox) apparatusBox.classList.add("vlab-reading-active");
+    animateBalanceReading(grams, () => {
+      emptyInput.value = grams.toFixed(2);
+      readingStatus.textContent = t("vlab.reading.result", { grams: grams.toFixed(2) });
+      recalcVlabRow(tr);
+      readBtn.disabled = false;
+      if (apparatusBox) apparatusBox.classList.remove("vlab-reading-active");
+    });
   });
 
   table.addEventListener("input", (e) => {
