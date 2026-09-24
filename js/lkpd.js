@@ -329,7 +329,7 @@ function lkpdStats() {
     } else if (sec.type === "vars") {
       sec.fields.filter(f => f.fixed === undefined).forEach(f => { total++; if (lkpdNum(st.vars[f.key]) !== null) done++; });
     } else if (sec.type === "table") {
-      total++; if (lkpdTablePoints().length >= 3 || getEksperimenDataSavedFlag(lkpdCtx.topic.id)) done++;
+      total++; if (lkpdTablePoints().length >= 3 || getEksperimenDataReadyFlag(lkpdCtx.topic.id)) done++;
     } else if (lkpdCheckable(sec)) {
       total++; if (st.ck[sec.id]) done++;
     } else if (sec.type === "open") {
