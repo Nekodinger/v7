@@ -66,18 +66,18 @@
       <p class="muted onboarding-footnote" data-i18n-html="gate.step1.footnote">Free tier Gemini punya batas kuota harian yang wajar untuk satu kelas, cek angka terbaru di <a href="https://ai.google.dev/gemini-api/docs/rate-limits" target="_blank" rel="noopener">ai.google.dev/gemini-api/docs/rate-limits</a>. Jangan masukkan data pribadi ke dalam prompt simulasi.</p>
     </div>
 
-    <!-- Langkah 2: cara belajar (di kelas / mandiri) -->
+    <!-- Langkah 2: peran pengguna -->
     <div id="gate-step-role" class="gate-step" hidden>
-      <h2 data-i18n="gate.step2.title">Langkah 2: Bagaimana kamu belajar?</h2>
-      <p class="muted" data-i18n="gate.step2.desc">Pilih salah satu. Keduanya memakai kode: kode sesi dari gurumu untuk belajar di kelas, atau kode belajar mandiri.</p>
+      <h2 data-i18n="gate.step2.title">Langkah 2: Kamu siapa?</h2>
+      <p class="muted" data-i18n="gate.step2.desc">Pilih salah satu supaya situs menuntunmu lewat alur yang tepat.</p>
       <div class="gate-role-options">
-        <button type="button" id="gate-role-class-btn" class="gate-role-btn">
-          <strong data-i18n="gate.role.class.title">Belajar di kelas</strong>
-          <span class="muted small" data-i18n="gate.role.class.desc">Isi nama &amp; kelas, lalu masukkan kode sesi dari gurumu untuk belajar bersama sesuai sesi kelas.</span>
+        <button type="button" id="gate-role-student-btn" class="gate-role-btn">
+          <strong data-i18n="gate.role.student.title">Saya siswa</strong>
+          <span class="muted small" data-i18n="gate.role.student.desc">Isi nama &amp; kelas, lalu masukkan kode dari guru untuk belajar bersama sesuai sesi kelas.</span>
         </button>
-        <button type="button" id="gate-role-self-btn" class="gate-role-btn">
-          <strong data-i18n="gate.role.self.title">Belajar mandiri</strong>
-          <span class="muted small" data-i18n="gate.role.self.desc">Isi nama &amp; kelas, lalu masukkan kode belajar mandiri untuk belajar sesuai kecepatanmu sendiri.</span>
+        <button type="button" id="gate-role-guest-btn" class="gate-role-btn">
+          <strong data-i18n="gate.role.guest.title">Bukan siswa (guru/pengelola/lainnya)</strong>
+          <span class="muted small" data-i18n="gate.role.guest.desc">Masukkan Kode Eksplorasi Bebas untuk langsung membuka semua topik.</span>
         </button>
       </div>
     </div>
@@ -109,16 +109,16 @@
       <p class="gate-back-row"><button type="button" id="gate-student-code-back-btn" class="link-btn" data-i18n="gate.student.code.back">Ubah nama/kelas</button></p>
     </div>
 
-    <!-- Langkah 4 (belajar mandiri): kode belajar mandiri -->
-    <div id="gate-step-self-code" class="gate-step" hidden>
-      <h2 data-i18n="gate.step4m.title">Langkah 4: Kode belajar mandiri</h2>
-      <p class="muted" data-i18n="gate.step4m.desc">Masukkan kode belajar mandiri untuk mulai. Kamu tetap membuka tab satu per satu: lanjut dari Materi ke Eksperimen begitu skor kuis pemahamanmu mencapai 80%.</p>
+    <!-- Langkah 3 (bukan siswa): kode eksplorasi -->
+    <div id="gate-step-guest-code" class="gate-step" hidden>
+      <h2 data-i18n="gate.step3g.title">Langkah 3: Kode Eksplorasi Bebas</h2>
+      <p class="muted" data-i18n="gate.step3g.desc">Masukkan kode dari guru/pengelola situs untuk membuka akses penuh ke semua topik.</p>
       <div class="key-input-row">
-        <input type="text" id="gate-self-code-input" data-i18n-placeholder="gate.self.code.placeholder" placeholder="Kode belajar mandiri" autocomplete="off">
-        <button type="button" id="gate-self-code-btn" class="btn btn-primary" data-i18n="action.start">Mulai</button>
+        <input type="text" id="gate-guest-code-input" data-i18n-placeholder="gate.guest.code.placeholder" placeholder="Kode eksplorasi" autocomplete="off">
+        <button type="button" id="gate-guest-code-btn" class="btn btn-primary" data-i18n="action.unlockaccess">Buka Akses</button>
       </div>
-      <p class="onboarding-status" id="gate-self-code-status"></p>
-      <p class="gate-back-row"><button type="button" id="gate-self-code-back-btn" class="link-btn" data-i18n="gate.student.code.back">Ubah nama/kelas</button></p>
+      <p class="onboarding-status" id="gate-guest-code-status"></p>
+      <p class="gate-back-row"><button type="button" id="gate-guest-code-back-btn" class="link-btn" data-i18n="action.back">Kembali</button></p>
     </div>
   </div>
 </div>
@@ -182,14 +182,6 @@
         <p id="topic-desc"></p>
       </div>
 
-      <div class="ability-bar" id="ability-bar" hidden>
-        <span class="ability-label" data-i18n="ability.label">Tingkat belajarmu:</span>
-        <span class="ability-chip" id="ability-chip"></span>
-        <span class="muted small" id="ability-source"></span>
-        <select id="ability-select" class="ability-select" data-i18n-aria="ability.select.aria" aria-label="Ubah tingkat belajar"></select>
-        <p class="muted small ability-desc" id="ability-desc"></p>
-      </div>
-
       <div class="tabs" role="tablist">
         <button class="tab-btn active" data-tab="materi" role="tab">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5.6C4 4.7 4.7 4 5.6 4H12v16H5.6A1.6 1.6 0 0 1 4 18.4V5.6Z"/><path d="M20 5.6c0-.9-.7-1.6-1.6-1.6H12v16h6.4c.9 0 1.6-.7 1.6-1.6V5.6Z"/></svg>
@@ -232,6 +224,9 @@
             <span data-i18n="lab.keybanner.text">Kamu belum memasukkan API key Gemini pribadi, jadi Generate belum bisa jalan.</span>
             <button type="button" id="lab-key-banner-btn" class="btn btn-primary btn-small" data-i18n="lab.keybanner.btn">Atur API Key</button>
           </p>
+
+          <div class="lab-card" id="lab-vlab-card" hidden></div>
+
           <div class="lab-grid">
 
             <div class="lab-card">
@@ -426,7 +421,7 @@
     </details>
 
     <details class="advanced-settings" id="settings-student-info-details" hidden>
-      <summary data-i18n="settings.studentinfo.summary">Data Diri</summary>
+      <summary data-i18n="settings.studentinfo.summary">Data Diri (Siswa)</summary>
       <label data-i18n="field.fullname">Nama lengkap
         <input type="text" id="settings-student-name-input" data-i18n-placeholder="field.fullname.placeholder" placeholder="Nama kamu">
       </label>
@@ -436,7 +431,7 @@
       <button type="button" id="settings-student-info-save-btn" class="btn btn-secondary btn-small" data-i18n="settings.studentinfo.savebtn">Simpan Data Diri</button>
     </details>
 
-    <p class="muted small"><button type="button" id="settings-reset-onboarding-btn" class="link-btn" data-i18n="settings.resetonboarding">Ulangi proses awal (ganti cara belajar: kelas/mandiri)</button></p>
+    <p class="muted small"><button type="button" id="settings-reset-onboarding-btn" class="link-btn" data-i18n="settings.resetonboarding">Ulangi proses awal (ganti peran siswa/bukan siswa)</button></p>
 
     <div class="modal-actions">
       <button type="button" id="settings-save-btn" class="btn btn-primary" data-i18n="settings.save">Simpan</button>
@@ -449,10 +444,8 @@
 <script src="js/i18n.js"></script>
 <script src="js/demo-simulations.js"></script>
 <script src="js/content.js"></script>
-<script src="js/lkpd-content.js"></script>
 <script src="js/chatbot-data.js"></script>
 <script src="js/chatbot.js"></script>
-<script src="js/lkpd.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
