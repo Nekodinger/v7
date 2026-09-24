@@ -113,7 +113,7 @@ function renderRoster(roster, serverNow) {
   const countEl = document.getElementById("roster-count");
   const ids = Object.keys(roster || {});
   if (ids.length === 0) {
-    body.innerHTML = `<tr><td colspan="3" class="muted small">${t("teacher.roster.empty")}</td></tr>`;
+    body.innerHTML = `<tr><td colspan="4" class="muted small">${t("teacher.roster.empty")}</td></tr>`;
     countEl.textContent = "";
     return;
   }
@@ -123,7 +123,11 @@ function renderRoster(roster, serverNow) {
     const r = roster[id];
     const cls = statusClass(r.lastSeen);
     const activity = r.topicId ? `${topicTitle(r.topicId)} - ${tabLabels[r.tabIndex] || "?"}` : "-";
-    return `<tr><td>${id}</td><td>${activity}</td><td><span class="status-dot ${cls}"></span>${relativeTime(r.lastSeen)}</td></tr>`;
+    // id = nama+kelas yang DIKETIK SISWA sendiri (teks bebas) -> WAJIB di-escape,
+    // kalau tidak nama seperti <img onerror=...> akan dieksekusi di browser guru
+    // (stored XSS yang bisa mencuri kode kontrol guru dari sessionStorage).
+    const lvl = r.level ? t("level." + r.level) : "-";
+    return `<tr><td>${escapeHtml(id)}</td><td>${escapeHtml(activity)}</td><td>${escapeHtml(lvl)}</td><td><span class="status-dot ${cls}"></span>${relativeTime(r.lastSeen)}</td></tr>`;
   }).join("");
   const onlineCount = ids.filter(id => statusClass(roster[id].lastSeen) === "online").length;
   countEl.textContent = t("teacher.roster.count", { total: ids.length, online: onlineCount });
@@ -142,10 +146,10 @@ function renderGatePending(gatePending) {
   body.innerHTML = list.map((req, i) => {
     const rowId = `gate-row-${i}`;
     return `<tr id="${rowId}">
-      <td>${req.studentId}</td>
-      <td>${topicTitle(req.topicId)}</td>
-      <td>${stageLabel(req.stage)}</td>
-      <td class="small" style="max-width:260px; white-space:pre-wrap;">${(req.summary || "").replace(/</g, "&lt;")}</td>
+      <td>${escapeHtml(req.studentId)}</td>
+      <td>${escapeHtml(topicTitle(req.topicId))}</td>
+      <td>${escapeHtml(stageLabel(req.stage))}</td>
+      <td class="small" style="max-width:260px; white-space:pre-wrap;">${escapeHtml(req.summary)}</td>
       <td><span class="status-dot ${statusClass(req.submittedAt)}"></span>${relativeTime(req.submittedAt)}</td>
       <td>
         <div class="teacher-actions">

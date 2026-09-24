@@ -24,6 +24,10 @@ window.Chatbot = (function () {
   let initialized = false;
   let nudgedForKey = false; // supaya ajakan isi API key cuma muncul sekali
   let sending = false;
+  // Naik setiap kali topik berganti. Balasan tutor yang datang TERLAMBAT (dari
+  // topik sebelumnya) dibuang berdasarkan nomor ini, supaya tidak muncul di
+  // obrolan topik yang baru.
+  let epoch = 0;
 
   function currentKB() {
     return (topicId && CHATBOT_KB[topicId]) ? CHATBOT_KB[topicId] : CHATBOT_KB.general;
@@ -35,8 +39,19 @@ window.Chatbot = (function () {
   }
 
   function buildKbContext(kb) {
-    if (!kb || !Array.isArray(kb.concepts)) return "";
-    return kb.concepts.map(c => "- " + c.explain).join("\n");
+    const parts = [];
+    if (kb && Array.isArray(kb.concepts)) parts.push(kb.concepts.map(c => "- " + c.explain).join("\n"));
+    // Topik yang belum punya bahan khusus di chatbot-data.js (mis. Temperature,
+    // Ideal Gases, Thermodynamics) tetap dibekali lembar rumus topiknya dari
+    // content.js supaya tutor tidak menjawab "secara umum" saja.
+    if (!(topicId && CHATBOT_KB[topicId])) {
+      const topic = (typeof TOPICS !== "undefined" ? TOPICS : []).find(tp => tp.id === topicId);
+      if (topic && topic.formulaSheet) parts.push(trContent(topic.formulaSheet));
+    }
+    return parts.filter(Boolean).join("\n\n");
+  }
+  function currentLevelForTutor() {
+    return (typeof getStudentLevel === "function") ? getStudentLevel(topicId) : "menengah";
   }
 
   function normalize(text) {
@@ -103,6 +118,7 @@ window.Chatbot = (function () {
 
   async function askTutor(message, backendUrl, apiKey) {
     setSending(true);
+    const myEpoch = epoch;
     const typingEl = appendMessage("bot", "<em>" + t("chatbot.typing") + "</em>");
     try {
       const resp = await fetch(backendUrl, {
@@ -113,6 +129,9 @@ window.Chatbot = (function () {
           apiKey: apiKey,
           lang: (typeof getLang === "function") ? getLang() : "id",
           topic: currentTopicTitle(),
+          // Tingkat belajar siswa (dasar/menengah/lanjut): tutor menyesuaikan
+          // kedalaman & gaya tuntunan (differentiated learning).
+          level: currentLevelForTutor(),
           kbContext: buildKbContext(currentKB()),
           history: history,
           message: message
@@ -120,6 +139,7 @@ window.Chatbot = (function () {
       });
       const data = await resp.json();
       typingEl.remove();
+      if (myEpoch !== epoch) return; // topik sudah berganti selama menunggu balasan
       if (data.error) {
         appendMessage("bot", escapeHTML(data.error));
         return;
@@ -135,9 +155,11 @@ window.Chatbot = (function () {
       if (history.length > 24) history = history.slice(-24);
     } catch (err) {
       typingEl.remove();
-      appendMessage("bot", t("chatbot.connectionerror", { err: escapeHTML(err.message) }));
+      if (myEpoch === epoch) appendMessage("bot", t("chatbot.connectionerror", { err: escapeHTML(err.message) }));
     } finally {
       setSending(false);
+      const input = document.getElementById("chatbot-input");
+      if (input && !document.getElementById("chatbot-panel").hidden) input.focus();
     }
   }
 
@@ -184,19 +206,32 @@ window.Chatbot = (function () {
 
     setTopic(id) {
       topicId = id;
+      epoch += 1;
       pendingConcept = null;
       history = [];
+      nudgedForKey = false;
       const label = document.getElementById("chatbot-topic-label");
       const kb = currentKB();
       const topic = (typeof TOPICS !== "undefined" ? TOPICS : []).find(tp => tp.id === id);
-      label.textContent = (topic && CHATBOT_KB[id])
+      label.textContent = (topic && (CHATBOT_KB[id] || topic.formulaSheet))
         ? t("chatbot.topiclabel.context", { title: trContent(topic.title) })
         : t("chatbot.topiclabel.nocontext");
-      // Kalau panel sedang terbuka, mulai percakapan baru untuk topik ini.
+      // SELALU mulai percakapan baru untuk topik ini, juga saat panel sedang
+      // tertutup (dulu obrolan topik lama tetap terlihat begitu panel dibuka
+      // lagi padahal riwayat/konteks tutor sudah untuk topik baru).
+      document.getElementById("chatbot-messages").innerHTML = "";
+      setSending(false);
       if (!document.getElementById("chatbot-panel").hidden) {
-        document.getElementById("chatbot-messages").innerHTML = "";
         appendMessage("bot", escapeHTML(trContent(kb.greeting)));
       }
+    },
+
+    // Membuka panel (kalau tertutup) lalu mengirim pesan atas nama siswa -
+    // dipakai tombol "Minta Tutor..." di panduan tingkat belajar.
+    ask(text) {
+      const panel = document.getElementById("chatbot-panel");
+      if (panel.hidden) { panel.hidden = false; this.onOpen(); }
+      handleUserMessage(text);
     },
 
     onOpen() {

@@ -14,6 +14,9 @@ const STORAGE_KEY_STUDENT_CLASS = "physicsSandbox.studentClass";
 // untuk mewajibkan siswa mengisi & menyimpan tabel dulu sebelum tombol
 // "Lanjut ke Latihan Soal" boleh membuka pertanyaan konfirmasi Eksperimen.
 const STORAGE_KEY_EKSDATA_SAVED = "physicsSandbox.eksperimenDataSaved";
+// Penanda bahwa siswa sudah melewati langkah OPSIONAL "kode sesi guru" di gerbang
+// (gabung ATAU dilewati) supaya langkah itu tidak muncul lagi tiap reload.
+const STORAGE_KEY_SESSION_STEP_DONE = "physicsSandbox.sessionStepDone";
 let currentTopic = null;
 let lastGeneratedHTML = "";
 let editCount = 0;
@@ -86,18 +89,27 @@ function getUnlockedTabIndex(topicId) {
   const progress = getProgress();
   return progress[topicId] !== undefined ? progress[topicId] : 0;
 }
+// Sesi kelas dari guru sekarang bersifat MENGARAHKAN, bukan MENGUNCI (diubah
+// 2026-09-24 atas permintaan guru: siswa harus bisa belajar mandiri dan lanjut
+// dari Materi ke Eksperimen begitu skor kuis pemahaman >= 80%, tanpa menunggu
+// guru dan tanpa terikat aktivitas sesi). Aktivitas yang ditentukan guru
+// hanya MENAMBAH tab yang terbuka untuk topik itu (guru bisa "membukakan"
+// satu tab untuk seluruh kelas); tidak pernah menutup tab/topik lain dan
+// tidak mengurangi kemajuan pribadi siswa.
+function getSessionTabIndexFor(topicId) {
+  if (isInClassSession() && classSession.topicId === topicId && typeof classSession.tabIndex === "number") {
+    return classSession.tabIndex;
+  }
+  return -1;
+}
+function getEffectiveUnlockedTabIndex(topicId) {
+  if (isUnlockAll()) return TAB_ORDER.length - 1;
+  return Math.max(getUnlockedTabIndex(topicId), getSessionTabIndexFor(topicId));
+}
 function isTabLocked(topicId, tabName) {
   const topic = TOPICS.find(tp => tp.id === topicId);
   if (!topic || topic.status !== "ready") return false;
-  // Sesi kelas aktif (dari guru) mengalahkan semua gembok lain (termasuk
-  // Kode Eksplorasi Bebas) - selama tergabung, HANYA tab yang sedang
-  // ditentukan guru untuk topik ini yang boleh dibuka.
-  if (isInClassSession()) {
-    if (topicId !== classSession.topicId) return true;
-    return TAB_ORDER.indexOf(tabName) !== classSession.tabIndex;
-  }
-  const unlocked = getUnlockedTabIndex(topicId);
-  return TAB_ORDER.indexOf(tabName) > unlocked;
+  return TAB_ORDER.indexOf(tabName) > getEffectiveUnlockedTabIndex(topicId);
 }
 function advanceProgress(topicId, tabIndexReached) {
   const progress = getProgress();
@@ -110,6 +122,91 @@ function nextReadyTopicId(topicId) {
   const idx = order.indexOf(topicId);
   if (idx < 0 || idx >= order.length - 1) return null;
   return order[idx + 1];
+}
+
+/* ============================================================
+   Differentiated learning (pembelajaran berdiferensiasi)
+   ------------------------------------------------------------
+   Ditambahkan 2026-09-24: siswa dalam satu kelas punya kesiapan
+   berbeda, jadi platform menyesuaikan dukungan & tantangan menurut
+   TINGKAT BELAJAR siswa: "dasar" (penguatan), "menengah" (inti),
+   "lanjut" (pengayaan). Batas skor lulus TETAP 80% untuk semua
+   tingkat (mastery yang sama), yang berbeda adalah JALAN menuju
+   ke sana dan tantangan sesudahnya.
+
+   Cara menentukan tingkat (deterministik, bisa dijelaskan):
+   - Bukti utama = hasil PERCOBAAN PERTAMA kuis pemahaman Materi
+     (5 soal) dan banyaknya percobaan sampai lulus:
+       firstPct = 100                        -> lanjut
+       firstPct = 80                         -> menengah (lulus langsung)
+       firstPct = 60 dan percobaan <= 2      -> menengah
+       firstPct = 60 dan percobaan >= 3      -> dasar
+       firstPct <= 40                        -> dasar
+   - Topik yang belum dinilai memakai tingkat topik terakhir yang
+     sudah dinilai (carry-over), atau "menengah" untuk siswa baru.
+   - Siswa boleh menimpa manual lewat pilihan di atas topik
+     (mis. merasa perlu lebih banyak dukungan); "Otomatis" mengembalikan.
+   Tingkat memengaruhi: panduan di Materi & Latihan, latihan tambahan
+   AI (soal sesuai tingkat), gaya Tutor Fisika, bawaan kompleksitas &
+   arahan di Generator Simulasi, dan ditampilkan ke guru di roster.
+   ============================================================ */
+const STORAGE_KEY_ABILITY = "physicsSandbox.ability";
+const ABILITY_LEVELS = ["dasar", "menengah", "lanjut"];
+const DEFAULT_LEVEL = "menengah";
+const EXTRA_PRACTICE_COUNT = 3;
+let extraQuestions = []; // soal latihan tambahan (AI) yang sedang tampil
+
+function getAbilityState() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY_ABILITY) || "{}") || {};
+    return {
+      manual: ABILITY_LEVELS.includes(raw.manual) ? raw.manual : null,
+      topics: (raw.topics && typeof raw.topics === "object") ? raw.topics : {}
+    };
+  } catch (e) { return { manual: null, topics: {} }; }
+}
+function saveAbilityState(st) {
+  try { localStorage.setItem(STORAGE_KEY_ABILITY, JSON.stringify(st)); } catch (e) { /* abaikan */ }
+}
+function levelFromMateriScore(firstPct, attempts) {
+  if (firstPct >= 100) return "lanjut";
+  if (firstPct >= 80) return "menengah";
+  if (firstPct >= 60) return attempts <= 2 ? "menengah" : "dasar";
+  return "dasar";
+}
+// Dicatat setiap kali siswa MENGIRIM kuis Materi dengan semua soal terjawab.
+function recordMateriAttempt(topicId, pct, passed) {
+  if (!topicId) return;
+  const st = getAbilityState();
+  const rec = st.topics[topicId] || { attempts: 0, firstPct: null, level: null, passed: false, at: 0 };
+  if (rec.passed) return; // sudah lulus: nilai awal tidak diubah lagi
+  rec.attempts += 1;
+  if (rec.firstPct === null) rec.firstPct = pct;
+  rec.level = levelFromMateriScore(rec.firstPct, rec.attempts);
+  rec.passed = !!passed;
+  rec.at = Date.now();
+  st.topics[topicId] = rec;
+  saveAbilityState(st);
+}
+function getStudentLevel(topicId) {
+  const st = getAbilityState();
+  if (st.manual) return st.manual;
+  const rec = topicId && st.topics[topicId];
+  if (rec && ABILITY_LEVELS.includes(rec.level)) return rec.level;
+  let latest = null;
+  Object.keys(st.topics).forEach(id => {
+    const r = st.topics[id];
+    if (r && ABILITY_LEVELS.includes(r.level) && (!latest || (r.at || 0) > (latest.at || 0))) latest = r;
+  });
+  return latest ? latest.level : DEFAULT_LEVEL;
+}
+function setManualLevel(levelOrNull) {
+  const st = getAbilityState();
+  st.manual = ABILITY_LEVELS.includes(levelOrNull) ? levelOrNull : null;
+  saveAbilityState(st);
+}
+function currentLevel() {
+  return getStudentLevel(currentTopic ? currentTopic.id : null);
 }
 
 /* ============================================================
@@ -250,6 +347,7 @@ function openConfirmModal(opts) {
       }
       const total = opts.questions.length;
       const scorePct = Math.round((correctCount / total) * 100);
+      if (typeof opts.onScore === "function") opts.onScore(scorePct, scorePct >= threshold);
       if (scorePct >= threshold) {
         if (opts.showScoreOnPass) showToast(t("confirm.scorepass", { score: scorePct }));
         el.hidden = true;
@@ -285,6 +383,12 @@ function startMateriGate(onPass) {
     fallbackLabel: t("gate.materi.fallback"),
     passThreshold: PASS_THRESHOLD_MATERI,
     showScoreOnPass: true,
+    // Hasil percobaan dipakai menentukan tingkat belajar (differentiated learning).
+    onScore: (pct, passed) => {
+      if (!currentTopic) return;
+      recordMateriAttempt(currentTopic.id, pct, passed);
+      onLevelChanged();
+    },
     onPass
   });
 }
@@ -313,6 +417,9 @@ async function submitGateForApproval(stage, summary) {
   if (!currentTopic) return;
   const topicId = currentTopic.id;
   const studentId = getStudentId();
+  // Awali ringkasan dengan tingkat belajar siswa supaya guru langsung tahu
+  // konteksnya saat menyetujui/menolak (differentiated learning).
+  summary = "[" + t("level." + getStudentLevel(topicId)) + "] " + (summary || "");
   setGateCacheEntry(topicId, stage, { status: "pending", submittedAt: Date.now() });
   renderGateBanner(stage);
   showToast(t("gate.submitted.toast"));
@@ -399,7 +506,7 @@ function renderGateBanner(stage) {
     el.innerHTML = `<span class="gate-banner-icon">&#10003;</span> ${t("gate.banner.approved." + stage)}`;
   } else if (cached.status === "rejected") {
     el.className = "gate-banner gate-rejected";
-    const note = cached.note ? `<br><em>${t("gate.banner.notefromteacher")}: ${escapeAttr(cached.note)}</em>` : "";
+    const note = cached.note ? `<br><em>${t("gate.banner.notefromteacher")}: ${escapeHtmlQ(cached.note)}</em>` : "";
     const retryId = stage + "-gate-retry-btn";
     el.innerHTML = `<span class="gate-banner-icon">&#10007;</span> ${t("gate.banner.rejected." + stage)}${note}` +
       `<br><button type="button" class="btn btn-secondary btn-small gate-retry-btn" id="${retryId}">${t("gate.banner.retrybtn")}</button>`;
@@ -517,6 +624,9 @@ function isInClassSession() {
 }
 function leaveClassSession(message) {
   localStorage.removeItem(STORAGE_KEY_CLASS_CODE);
+  // Keluar/berakhirnya sesi TIDAK boleh melempar siswa kembali ke gerbang:
+  // sesi bersifat opsional, siswa lanjut belajar mandiri.
+  localStorage.setItem(STORAGE_KEY_SESSION_STEP_DONE, "1");
   classSession = null;
   lastClassActivityKey = null;
   stopClassSync();
@@ -529,10 +639,9 @@ function leaveClassSession(message) {
   updateClassSessionBanner();
   updateQuizUI(null);
   if (message) showToast(message);
-  // Kalau perannya siswa, situs WAJIB kembali terkunci di gate (minta kode
-  // baru) begitu sesi berakhir/tidak valid lagi - bukan cuma kembali ke mode
-  // belajar mandiri seperti sebelumnya. Peran "bukan siswa" tidak terpengaruh
-  // (aksesnya tetap lewat Kode Eksplorasi Bebas, tidak terkait sesi kelas).
+  // (Dulu di sini siswa dipaksa kembali ke gerbang minta kode baru. Sekarang
+  // sesi opsional, jadi cukup kembali ke mode belajar mandiri. applyGate tetap
+  // dipanggil supaya kasus lain - mis. API key dihapus - tetap ditangani.)
   if (typeof applyGate === "function") applyGate();
 }
 // Mencoba gabung/menyambung ulang ke sebuah kode sesi kelas lewat backend.
@@ -547,7 +656,7 @@ async function attemptJoinClassSession(code) {
     const resp = await fetch(backendUrl, {
       method: "POST",
       headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ mode: "session_sync", code: trimmed, studentId: getStudentId(), topicId: null, tabIndex: null })
+      body: JSON.stringify({ mode: "session_sync", code: trimmed, studentId: getStudentId(), topicId: null, tabIndex: null, level: getStudentLevel(null) })
     });
     const data = await resp.json();
     if (data.error) return { ok: false, error: data.error };
@@ -556,6 +665,7 @@ async function attemptJoinClassSession(code) {
       return { ok: false, error: t("classsession.wrongcode") };
     }
     localStorage.setItem(STORAGE_KEY_CLASS_CODE, trimmed);
+    localStorage.setItem(STORAGE_KEY_SESSION_STEP_DONE, "1");
     classSession = data;
     lastClassActivityKey = data.topicId + "|" + data.tabIndex;
     startClassSync();
@@ -587,7 +697,8 @@ async function syncClassSession() {
         code: code,
         studentId: getStudentId(),
         topicId: currentTopic ? currentTopic.id : null,
-        tabIndex: activeTabName ? TAB_ORDER.indexOf(activeTabName) : null
+        tabIndex: activeTabName ? TAB_ORDER.indexOf(activeTabName) : null,
+        level: currentLevel()
       })
     });
     const data = await resp.json();
@@ -606,9 +717,10 @@ async function syncClassSession() {
       const tabName = document.querySelector(".tab-btn.active")?.dataset.tab;
       if (tabName) updateTopicProgressUI(tabName);
     }
-    // Baru gabung, atau guru baru saja ganti aktivitas -> langsung antar
-    // siswa ke sana supaya semua benar-benar mulai bersamaan.
-    if (changed) goToClassSessionActivity();
+    // Guru mengganti aktivitas -> JANGAN menyeret siswa yang sedang belajar
+    // mandiri; cukup beri tahu (banner "Ke sana sekarang" sudah tampil di atas).
+    // Siswa hanya diantar otomatis SEKALI, saat baru lolos gerbang (applyGate).
+    if (changed && data.topicId) showToast(t("classsession.activitychanged"));
   } catch (err) {
     // Gagal konek sesekali (jaringan) bukan hal fatal - coba lagi di
     // polling berikutnya, jangan spam toast tiap 12 detik.
@@ -876,9 +988,8 @@ function renderNav() {
 
     levelTopics.forEach(topic => {
       const btn = document.createElement("button");
-      const blocked = isInClassSession() && topic.id !== classSession.topicId;
       const isSessionFocus = isInClassSession() && topic.id === classSession.topicId;
-      btn.className = "nav-item" + (blocked ? " session-locked" : "") + (isSessionFocus ? " session-active" : "");
+      btn.className = "nav-item" + (isSessionFocus ? " session-active" : "");
       btn.dataset.id = topic.id;
       btn.innerHTML =
         `<span class="dot ${topic.status === 'ready' ? 'dot-ready' : 'dot-soon'}"></span>` +
@@ -895,10 +1006,6 @@ function renderNav() {
 }
 
 function selectTopic(id) {
-  if (isInClassSession() && id !== classSession.topicId) {
-    showToast(t("toast.classlocked"));
-    return;
-  }
   currentTopic = TOPICS.find(tp => tp.id === id);
   if (!currentTopic) return;
 
@@ -922,6 +1029,9 @@ function selectTopic(id) {
   renderEksperimen();
   renderLatihan();
   setupLabForTopic();
+  refreshAbilityBar();
+  renderMateriDifferentiation();
+  renderLatihanDifferentiation();
   if (currentTopic.status === "ready") checkGateOnTopicOpen(currentTopic.id);
 
   if (window.Chatbot) Chatbot.setTopic(currentTopic.id);
@@ -1012,7 +1122,7 @@ function updateTopicProgressUI(activeTab) {
     return;
   }
 
-  const unlocked = isUnlockAll() ? TAB_ORDER.length - 1 : getUnlockedTabIndex(currentTopic.id);
+  const unlocked = getEffectiveUnlockedTabIndex(currentTopic.id);
   const activeIdx = TAB_ORDER.indexOf(activeTab);
   document.querySelectorAll(".tab-btn").forEach(b => {
     b.classList.toggle("locked", isTabLocked(currentTopic.id, b.dataset.tab));
@@ -1104,7 +1214,7 @@ document.getElementById("progress-finish-btn").addEventListener("click", () => {
 function renderMateri() {
   const panel = document.getElementById("panel-materi");
   if (currentTopic.status === "ready" && currentTopic.materiHTML) {
-    panel.innerHTML = pjblStageHTML("materi") + trContent(currentTopic.materiHTML);
+    panel.innerHTML = pjblStageHTML("materi") + `<div id="materi-diff"></div>` + trContent(currentTopic.materiHTML);
   } else {
     panel.innerHTML = comingSoonHTML("materi");
   }
@@ -1170,15 +1280,18 @@ function renderEksperimenDataTableHTML(dt) {
       <p id="eks-dt-status" class="eks-dt-status"></p>
     </div>`;
 }
-function recalcEksperimenRow(tr, replicateCount) {
-  const row = tr.dataset.row;
+function recalcEksperimenRow(tr, dt) {
   const inputs = tr.querySelectorAll(".eks-dt-input");
   const nums = Array.from(inputs).map(i => parseFloat(i.value)).filter(n => !isNaN(n));
   const avgCell = tr.querySelector(".eks-dt-avg");
   const fCell = tr.querySelector(".eks-dt-f");
   if (nums.length) {
     const avg = nums.reduce((a, b) => a + b, 0) / nums.length;
-    const F = (avg / 1000) * 9.81;
+    // Faktor kolom turunan didefinisikan per topik di dataTable.derivedFactor
+    // (mis. Current Balance: F = avg/1000 x 9,81 -> 0,00981). Kalau tidak
+    // didefinisikan, kolom turunan = rata-rata apa adanya.
+    const factor = (dt && typeof dt.derivedFactor === "number") ? dt.derivedFactor : 1;
+    const F = avg * factor;
     avgCell.textContent = avg.toFixed(3);
     fCell.textContent = F.toFixed(4);
   } else {
@@ -1195,7 +1308,7 @@ function wireEksperimenDataTable(dt) {
 
   table.addEventListener("input", (e) => {
     if (!e.target.classList.contains("eks-dt-input")) return;
-    recalcEksperimenRow(e.target.closest("tr"), dt.replicateCount);
+    recalcEksperimenRow(e.target.closest("tr"), dt);
   });
 
   saveBtn.addEventListener("click", async () => {
@@ -1228,17 +1341,28 @@ function wireEksperimenDataTable(dt) {
           studentId: getStudentId(),
           apiKey: getGeminiApiKey(),
           context: dt.context,
-          rows: rows.map(r => ({ I: r.I, values: r.values.map(v => v === "" ? null : parseFloat(v)) }))
+          meta: {
+            independentLabel: dt.independentLabel, replicateLabel: dt.replicateLabel,
+            derivedLabel: dt.derivedLabel, replicateCount: dt.replicateCount,
+            derivedFactor: (typeof dt.derivedFactor === "number") ? dt.derivedFactor : 1
+          },
+          rows: rows.map(r => ({ I: r.I, values: r.values.map(v => (v === "" || isNaN(parseFloat(v))) ? null : parseFloat(v)) }))
         })
       });
       const data = await resp.json();
       if (data.error) {
         statusEl.className = "eks-dt-status eks-dt-status-warn";
         statusEl.textContent = data.error;
+      } else if (!data.ok) {
+        // Spreadsheet GAGAL ditulis: jangan tandai "tersimpan" (dulu ditandai
+        // tersimpan juga, sehingga siswa lolos syarat "isi & simpan tabel"
+        // padahal datanya tidak pernah sampai ke guru).
+        statusEl.className = "eks-dt-status eks-dt-status-warn";
+        statusEl.textContent = t("eksdata.sheeterror");
       } else {
         setEksperimenDataSavedFlag(currentTopic.id, true);
         statusEl.className = "eks-dt-status " + (data.flagged ? "eks-dt-status-warn" : "eks-dt-status-ok");
-        statusEl.textContent = (data.sheetError ? (t("eksdata.sheeterror") + " ") : t("eksdata.saved") + " ") + (data.feedback || "");
+        statusEl.textContent = t("eksdata.saved") + " " + (data.feedback || "");
       }
     } catch (e) {
       statusEl.className = "eks-dt-status eks-dt-status-warn";
@@ -1264,7 +1388,7 @@ function setEksperimenDataSavedFlag(topicId, val) {
 function renderLatihan() {
   const panel = document.getElementById("panel-latihan");
   if (currentTopic.status === "ready" && currentTopic.latihan && currentTopic.latihan.length) {
-    panel.innerHTML = pjblStageHTML("latihan") + currentTopic.latihan.map((q, i) => {
+    panel.innerHTML = pjblStageHTML("latihan") + `<div id="latihan-diff"></div>` + currentTopic.latihan.map((q, i) => {
       let optionsHTML = "";
       if (q.type === "mcq") {
         optionsHTML = `<ul class="options">${q.options.map((opt, oi) =>
@@ -1279,7 +1403,7 @@ function renderLatihan() {
           <button class="reveal-btn" onclick="this.nextElementSibling.classList.toggle('show')">${t("question.reveal")}</button>
           <div class="solution"><strong>${t("question.solution")}</strong><br>${trContent(q.solution)}</div>
         </div>`;
-    }).join("");
+    }).join("") + `<div id="latihan-extra"></div>`;
   } else {
     panel.innerHTML = comingSoonHTML("latihan");
   }
@@ -1314,7 +1438,7 @@ function setupLabForTopic() {
   document.getElementById("pf-goal").value = "";
   document.getElementById("pf-extra").value = "";
   document.getElementById("pf-vistype").selectedIndex = 0;
-  document.getElementById("pf-level").selectedIndex = 1;
+  applyAbilityToLab();
   document.getElementById("final-prompt").value = "";
   document.getElementById("preview-frame").removeAttribute("srcdoc");
   document.getElementById("preview-frame").hidden = false;
@@ -1399,6 +1523,10 @@ document.getElementById("pf-build-btn").addEventListener("click", () => {
     prompt += t("promptgen.goal", { concept: concept, goal: goal });
   }
   prompt += t("promptgen.level", { level: level });
+  // Arahan tambahan menurut tingkat belajar siswa (differentiated learning);
+  // "menengah" = standar, tanpa arahan tambahan.
+  const studentLevel = currentLevel();
+  if (studentLevel !== "menengah") prompt += t("promptgen.leveldirective." + studentLevel);
   prompt += t("promptgen.footer");
   if (extra) {
     prompt += t("promptgen.extra", { extra: extra });
@@ -1641,6 +1769,175 @@ document.getElementById("download-btn").addEventListener("click", () => {
 
 document.getElementById("lab-reflection-submit-btn").addEventListener("click", startLabReflectionGate);
 
+/* ---------------- Differentiated learning: UI ---------------- */
+function formulaSheetHTML(open) {
+  if (!currentTopic || !currentTopic.formulaSheet) return "";
+  const txt = trContent(currentTopic.formulaSheet).trim();
+  if (!txt) return "";
+  return `<details class="diff-formula"${open ? " open" : ""}><summary>${t("diff.formula.title")}</summary><pre class="diff-formula-text">${escapeHtmlQ(txt)}</pre></details>`;
+}
+function initAbilityBar() {
+  const sel = document.getElementById("ability-select");
+  if (!sel) return;
+  sel.innerHTML = `<option value="auto">${t("ability.select.auto")}</option>` +
+    ABILITY_LEVELS.map(l => `<option value="${l}">${t("level." + l)}</option>`).join("");
+  sel.addEventListener("change", () => {
+    setManualLevel(sel.value === "auto" ? null : sel.value);
+    onLevelChanged();
+  });
+}
+function refreshAbilityBar() {
+  const bar = document.getElementById("ability-bar");
+  if (!bar) return;
+  if (!currentTopic || currentTopic.status !== "ready") { bar.hidden = true; return; }
+  bar.hidden = false;
+  const lvl = currentLevel();
+  const st = getAbilityState();
+  const chip = document.getElementById("ability-chip");
+  chip.textContent = t("level." + lvl);
+  chip.dataset.level = lvl;
+  document.getElementById("ability-source").textContent = "(" + (st.manual ? t("ability.manual") : t("ability.auto")) + ")";
+  document.getElementById("ability-desc").textContent = t("ability.desc." + lvl);
+  document.getElementById("ability-select").value = st.manual || "auto";
+}
+function applyAbilityToLab() {
+  const sel = document.getElementById("pf-level");
+  if (!sel) return;
+  const lvl = currentLevel();
+  sel.selectedIndex = lvl === "dasar" ? 0 : (lvl === "lanjut" ? 2 : 1);
+}
+// Dipanggil setiap tingkat berubah (hasil kuis Materi baru, atau dipilih manual).
+function onLevelChanged() {
+  refreshAbilityBar();
+  renderMateriDifferentiation();
+  renderLatihanDifferentiation();
+  applyAbilityToLab();
+}
+function renderMateriDifferentiation() {
+  const el = document.getElementById("materi-diff");
+  if (!el) return;
+  if (!currentTopic || currentTopic.status !== "ready") { el.innerHTML = ""; return; }
+  const lvl = currentLevel();
+  let html = "";
+  if (lvl === "dasar") {
+    html = `<div class="diff-card diff-dasar"><h4>${t("diff.materi.dasar.title")}</h4><ol>` +
+      [1, 2, 3, 4].map(i => `<li>${t("diff.materi.dasar.s" + i)}</li>`).join("") + `</ol>` +
+      formulaSheetHTML(true) +
+      `<button type="button" class="btn btn-secondary btn-small diff-tutor-btn" data-msg="diff.materi.dasar.tutormsg">${t("diff.materi.dasar.tutorbtn")}</button></div>`;
+  } else if (lvl === "lanjut") {
+    html = `<div class="diff-card diff-lanjut"><h4>${t("diff.materi.lanjut.title")}</h4><ul>` +
+      [1, 2, 3].map(i => `<li>${t("diff.materi.lanjut.c" + i)}</li>`).join("") + `</ul>` +
+      `<button type="button" class="btn btn-secondary btn-small diff-tutor-btn" data-msg="diff.materi.lanjut.tutormsg">${t("diff.materi.lanjut.tutorbtn")}</button></div>`;
+  } else {
+    const sheet = formulaSheetHTML(false);
+    if (sheet) html = `<div class="diff-card diff-menengah"><h4>${t("diff.materi.menengah.title")}</h4>${sheet}</div>`;
+  }
+  el.innerHTML = html;
+  el.querySelectorAll(".diff-tutor-btn").forEach(btn => {
+    btn.addEventListener("click", () => { if (window.Chatbot) Chatbot.ask(t(btn.dataset.msg)); });
+  });
+}
+function renderLatihanDifferentiation() {
+  const top = document.getElementById("latihan-diff");
+  const bottom = document.getElementById("latihan-extra");
+  extraQuestions = [];
+  if (top) top.innerHTML = "";
+  if (bottom) bottom.innerHTML = "";
+  if (!top || !bottom || !currentTopic || currentTopic.status !== "ready") return;
+  const lvl = currentLevel();
+  if (lvl === "dasar") {
+    top.innerHTML = `<div class="diff-card diff-dasar"><h4>${t("diff.latihan.dasar.title")}</h4><ol>` +
+      [1, 2, 3, 4, 5].map(i => `<li>${t("diff.latihan.dasar.s" + i)}</li>`).join("") + `</ol>${formulaSheetHTML(true)}</div>`;
+  } else if (lvl === "lanjut") {
+    top.innerHTML = `<div class="diff-card diff-lanjut"><h4>${t("diff.latihan.lanjut.title")}</h4><ul>` +
+      [1, 2, 3].map(i => `<li>${t("diff.latihan.lanjut.c" + i)}</li>`).join("") + `</ul></div>`;
+  } else {
+    top.innerHTML = `<div class="diff-card diff-menengah"><h4>${t("diff.latihan.menengah.title")}</h4><p>${t("diff.latihan.menengah.tip")}</p>${formulaSheetHTML(false)}</div>`;
+  }
+  bottom.innerHTML = `<div class="diff-card extra-practice"><h4>${t("extra.title", { level: t("level." + lvl) })}</h4>` +
+    `<p class="muted small">${t("extra.desc")}</p>` +
+    `<div class="lab-actions"><button type="button" id="extra-gen-btn" class="btn btn-primary btn-small">${t("extra.btn", { n: EXTRA_PRACTICE_COUNT })}</button>` +
+    `<span id="extra-status" class="muted small"></span></div><div id="extra-list"></div></div>`;
+  document.getElementById("extra-gen-btn").addEventListener("click", generateExtraPractice);
+}
+function stripTagsForPrompt(str) {
+  return String(str == null ? "" : str).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+async function generateExtraPractice() {
+  const btn = document.getElementById("extra-gen-btn");
+  const status = document.getElementById("extra-status");
+  if (!btn || !currentTopic) return;
+  const apiKey = getGeminiApiKey();
+  const backendUrl = getBackendUrl();
+  if (!apiKey) { status.textContent = t("extra.needkey"); return; }
+  if (!backendUrl) { status.textContent = t("extra.nobackend"); return; }
+  const topic = currentTopic;
+  const lvl = currentLevel();
+  const existing = extraQuestions.map(q => q.question)
+    .concat((topic.latihan || []).map(q => stripTagsForPrompt(trContent(q.question)))).slice(0, 30);
+  btn.disabled = true;
+  status.textContent = t("extra.loading");
+  try {
+    const resp = await fetch(backendUrl, {
+      method: "POST", headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({
+        mode: "quiz_generate", apiKey: apiKey, lang: getLang(),
+        topicTitle: trContent(topic.title),
+        formulaRef: topic.formulaSheet ? trContent(topic.formulaSheet) : "",
+        existingQuestions: existing, count: EXTRA_PRACTICE_COUNT,
+        questionType: lvl === "lanjut" ? "mixed" : "mcq", difficulty: lvl
+      })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    // Kalau siswa keburu pindah topik/ganti tingkat, hasil ini sudah tidak relevan.
+    if (!currentTopic || currentTopic.id !== topic.id || currentLevel() !== lvl) return;
+    extraQuestions = extraQuestions.concat(data.questions || []);
+    renderExtraList();
+    status.textContent = data.warning || "";
+    btn.textContent = t("extra.btn.more", { n: EXTRA_PRACTICE_COUNT });
+  } catch (err) {
+    status.textContent = t("extra.failed", { err: err.message });
+  } finally {
+    btn.disabled = false;
+  }
+}
+function renderExtraList() {
+  const list = document.getElementById("extra-list");
+  if (!list) return;
+  const lvl = currentLevel();
+  list.innerHTML = extraQuestions.map((q, i) => {
+    const opts = (q.type === "mcq")
+      ? `<ul class="options extra-options">${(q.options || []).map((o, oi) =>
+          `<li><label><input type="radio" name="extra-${i}" value="${oi}"> ${String.fromCharCode(65 + oi)}. ${escapeHtmlQ(o)}</label></li>`).join("")}</ul>`
+      : "";
+    const action = (q.type === "mcq")
+      ? `<button type="button" class="reveal-btn extra-check-btn" data-i="${i}">${t("extra.check")}</button>`
+      : `<button type="button" class="reveal-btn extra-reveal-btn" data-i="${i}">${t("extra.reveal")}</button>`;
+    return `<div class="question-card extra-q" data-i="${i}">` +
+      `<div class="q-title">${t("extra.q.label", { n: i + 1 })} <span class="level-tag level-${lvl}">${t("level." + lvl)}</span></div>` +
+      `<div>${escapeHtmlQ(q.question)}</div>${opts}${action}` +
+      `<p class="confirm-feedback small extra-feedback" hidden></p>` +
+      `<div class="solution"><strong>${t("extra.solution")}</strong><br>${escapeHtmlQ(q.modelAnswer || "-")}</div></div>`;
+  }).join("");
+  list.querySelectorAll(".extra-check-btn").forEach(btn => btn.addEventListener("click", () => {
+    const card = btn.closest(".extra-q");
+    const q = extraQuestions[parseInt(btn.dataset.i, 10)];
+    const fb = card.querySelector(".extra-feedback");
+    const picked = card.querySelector("input[type=radio]:checked");
+    fb.hidden = false;
+    if (!picked) { fb.className = "confirm-feedback small warn extra-feedback"; fb.textContent = t("extra.pickone"); return; }
+    const ok = parseInt(picked.value, 10) === q.correct;
+    fb.className = "confirm-feedback small " + (ok ? "ok" : "warn") + " extra-feedback";
+    fb.textContent = ok ? t("extra.correct") : t("extra.wrong", { letter: String.fromCharCode(65 + q.correct) });
+    card.querySelector(".solution").classList.add("show");
+  }));
+  list.querySelectorAll(".extra-reveal-btn").forEach(btn => btn.addEventListener("click", () => {
+    btn.closest(".extra-q").querySelector(".solution").classList.toggle("show");
+  }));
+  if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise([list]).catch(() => {});
+}
+
 /* ---------------- Pengaturan (modal) ---------------- */
 const settingsModal = document.getElementById("settings-modal");
 function refreshUnlockStatusUI() {
@@ -1708,6 +2005,7 @@ document.getElementById("settings-reset-onboarding-btn").addEventListener("click
   localStorage.removeItem(STORAGE_KEY_STUDENT_CLASS);
   localStorage.removeItem(STORAGE_KEY_UNLOCK_ALL);
   leaveClassSession(null);
+  localStorage.removeItem(STORAGE_KEY_SESSION_STEP_DONE);
   settingsModal.hidden = true;
   applyGate();
 });
@@ -1726,7 +2024,9 @@ function computeGateStep() {
   const role = getUserRole();
   if (role === "student") {
     if (!getStudentName() || !getStudentClass()) return "student-info";
-    if (!isInClassSession()) return "student-code";
+    // Kode sesi guru OPSIONAL: ditawarkan sekali (gabung atau lewati), setelah
+    // itu siswa bisa langsung belajar mandiri.
+    if (!isInClassSession() && localStorage.getItem(STORAGE_KEY_SESSION_STEP_DONE) !== "1") return "student-code";
     return null;
   }
   if (role === "guest") {
@@ -1836,6 +2136,10 @@ document.getElementById("gate-student-code-btn").addEventListener("click", async
 document.getElementById("gate-student-code-input").addEventListener("keydown", (e) => {
   if (e.key === "Enter") document.getElementById("gate-student-code-btn").click();
 });
+document.getElementById("gate-student-code-skip-btn").addEventListener("click", () => {
+  localStorage.setItem(STORAGE_KEY_SESSION_STEP_DONE, "1");
+  applyGate();
+});
 document.getElementById("gate-student-code-back-btn").addEventListener("click", () => {
   showGateStep("student-info");
 });
@@ -1874,6 +2178,7 @@ document.getElementById("chatbot-close-btn").addEventListener("click", () => { c
 /* ---------------- Init ---------------- */
 applyStaticI18n();
 initLangSwitch();
+initAbilityBar();
 renderNav();
 refreshKeyStatusUI();
 refreshUnlockStatusUI();

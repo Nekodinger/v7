@@ -1124,6 +1124,9 @@ const MAGNETIC_EKSPERIMEN = {
     replicateCount: 3,
     replicateLabel: "Δm (g)",
     derivedLabel: "F = Δm×g (N)",
+    // F = (Δm/1000) × 9,81  ->  faktor pengali terhadap rata-rata Δm (g). Dipakai
+    // tabel interaktif (app.js) DAN kolom turunan di spreadsheet (Code.gs).
+    derivedFactor: 9.81 / 1000,
     context: "Eksperimen Current Balance: kawat berarus I diletakkan tegak lurus medan sepasang magnet di atas neraca timbang elektronik. Gaya magnetik F = BIL terbaca sebagai perubahan massa Δm pada neraca (F = Δm/1000 × 9,81). Data yang valid: F harus naik kira-kira LINEAR terhadap I dan melalui/dekat titik asal (I=0 -> F=0); tiga pembacaan ulangan (Δm₁/Δm₂/Δm₃) pada arus yang sama seharusnya saling berdekatan (bukan tersebar jauh); rapat fluks magnet sekolah (gradien grafik F-I dibagi panjang L) tipikal ada di kisaran 0,1-0,5 T."
   }
 };
