@@ -94,6 +94,7 @@ Situs GitHub Pages bersifat statis (tidak bisa menyimpan API key dengan aman sen
 - **Error CORS di console browser**: pastikan front-end mengirim `Content-Type: text/plain` (sudah begitu di `app.js`), jangan diubah ke `application/json`, karena Apps Script tidak bisa menjawab *preflight request* dengan benar.
 - **"API key Gemini belum diisi"**: pengguna perlu memasukkan API key pribadinya dulu lewat halaman Beranda atau tombol Pengaturan.
 - **"API key ditolak Google"**: API key yang dimasukkan salah, sudah dihapus, atau bukan API key Gemini yang valid, minta pengguna membuat/menyalin ulang dari https://aistudio.google.com/apikey.
+- **Tombol "Simpan Data" di Eksperimen menjawab "Prompt kosong."**: artinya URL backend yang dipakai browser itu menjawab dengan Apps Script yang tidak mengenal mode `eksperimen_data_save` (permintaan jatuh ke handler Gemini). Dua penyebab: (a) browser masih menyimpan URL deployment LAMA di **Pengaturan -> URL Backend** (nilai ini mengalahkan `DEFAULT_BACKEND_URL` di `js/config.js`); situs kini otomatis mencoba ulang sekali dengan URL bawaan dan membuang URL lama bila berhasil; (b) `Code.gs` di deployment itu belum diperbarui: redeploy lewat Deploy -> Manage deployments -> Edit -> New version -> Deploy. Sementara itu siswa tidak terkunci: data tetap tersimpan di perangkat dan tombol Next tetap membuka konfirmasi persetujuan guru; hanya tabelnya yang belum masuk ke spreadsheet.
 - **Deployment lama masih terpanggil**: setiap edit `Code.gs`, buat deployment versi baru lewat **Manage deployments**.
 - **Respons AI terlalu panjang/terpotong (finishReason MAX_TOKENS)**: naikkan `MAX_OUTPUT_TOKENS` di `Code.gs` (defaultnya 48000), atau minta kompleksitas visual yang lebih rendah di prompt.
 - **"Permintaan diblokir oleh filter keamanan Gemini"**: ubah kata-kata di prompt (jarang terjadi untuk topik fisika, tapi filter otomatis kadang terlalu sensitif terhadap kata tertentu).
@@ -103,7 +104,7 @@ Situs GitHub Pages bersifat statis (tidak bisa menyimpan API key dengan aman sen
 
 ## 4. Navigasi bertahap, Tutor Fisika (chatbot), dan Panel Guru
 
-Fitur-fitur ini butuh **satu langkah redeploy Apps Script** (lihat Bagian 3) supaya aktif, karena `apps-script/Code.gs` menambahkan mode `chat`, `session_sync`, `teacher_session`, `teacher_roster`, `gate_submit`, `gate_status`, `teacher_gate_decide`, `quiz_bank_get`, `quiz_bank_save`, `quiz_publish`, `quiz_unpublish`, `quiz_results`, `quiz_submit`, dan `quiz_generate` di server. Kalau kamu sudah pernah deploy sebelumnya: buka https://script.google.com, buka project-nya, klik **Deploy -> Manage deployments -> Edit (ikon pensil) -> Version: New version -> Deploy**. URL `/exec` tetap sama, tidak perlu ganti `js/config.js` lagi.
+Fitur-fitur ini butuh **satu langkah redeploy Apps Script** (lihat Bagian 3) supaya aktif, karena `apps-script/Code.gs` menambahkan mode `chat`, `session_sync`, `teacher_session`, `teacher_roster`, `gate_submit`, `gate_status`, `teacher_gate_decide`, `quiz_bank_get`, `quiz_bank_save`, `quiz_publish`, `quiz_unpublish`, `quiz_results`, `quiz_submit`, `quiz_generate`, dan `eksperimen_data_save` (simpan tabel Eksperimen) di server. Kalau kamu sudah pernah deploy sebelumnya: buka https://script.google.com, buka project-nya, klik **Deploy -> Manage deployments -> Edit (ikon pensil) -> Version: New version -> Deploy**. URL `/exec` tetap sama, tidak perlu ganti `js/config.js` lagi.
 
 **Navigasi bertahap per topik (sintaks PjBL) + konfirmasi guru di titik kritis.** Siswa boleh mulai dari topik mana saja (tidak perlu urut dari topik 1), tapi di dalam satu topik, empat tab (Materi -> Eksperimen -> Latihan Soal -> Lab Simulasi) tetap harus dibuka berurutan - sekarang mengikuti sintaks **Project-Based Learning (PjBL)** (bukan lagi Inquiry Learning), supaya cocok untuk proyek fisika yang berjalan lintas 2-3 pertemuan: Materi = Penentuan Pertanyaan Mendasar & Perencanaan Proyek, Eksperimen = Mendesain Perencanaan Proyek/Menyusun Jadwal/Memonitor Kemajuan, Latihan Soal = Penguatan Konsep, dan Lab Simulasi = Menguji Hasil & Mengevaluasi Pengalaman. Label tahap PjBL ini tampil otomatis di atas tiap tab (lihat `PJBL_STAGE_LABELS` di `js/app.js`).
 
@@ -166,7 +167,7 @@ Pada Latihan Soal, tanda "(jawaban benar)" dan pembahasan hanya muncul setelah s
 
 ## Tes otomatis
 
-Folder tests/ berisi server uji lokal yang menjalankan Code.gs ASLI dengan layanan Google/Gemini palsu (tidak menyentuh Apps Script, spreadsheet, atau kuota Gemini sungguhan) dan 28 tes Playwright. Setiap tes mereset state server (sesi aktif), membuka browser baru, lalu login sebagai siswa lewat layar gerbang. Jalankan: `node tests/mock-backend.js 8787 &` lalu `NODE_PATH=$(npm root -g) node tests/e2e.js`.
+Folder tests/ berisi server uji lokal yang menjalankan Code.gs ASLI dengan layanan Google/Gemini palsu (tidak menyentuh Apps Script, spreadsheet, atau kuota Gemini sungguhan) dan 35 tes Playwright. Setiap tes mereset state server (sesi aktif), membuka browser baru, lalu login sebagai siswa lewat layar gerbang. Jalankan: `node tests/mock-backend.js 8787 &` lalu `NODE_PATH=$(npm root -g) node tests/e2e.js`.
 
 ## 5. Menambah topik baru
 
