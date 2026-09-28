@@ -1268,7 +1268,7 @@ function renderEksperimenDataTableHTML(dt) {
       <h4>${t("eksdata.title")}</h4>
       <p class="muted">${t("eksdata.desc")}</p>
       <table class="eks-datatable">
-        <thead><tr><th>${dt.independentLabel}</th>${repHeaders}<th>${dt.replicateLabel} rata-rata</th><th>${dt.derivedLabel}</th></tr></thead>
+        <thead><tr><th>${dt.independentLabel}</th>${repHeaders}<th>${dt.replicateLabel} ${t("eksdata.mean")}</th><th>${dt.derivedLabel}</th></tr></thead>
         <tbody>${rowsHTML}</tbody>
       </table>
       <button type="button" id="eks-dt-save-btn" class="btn btn-primary btn-small">${t("eksdata.savebtn")}</button>
@@ -1333,6 +1333,7 @@ function wireEksperimenDataTable(dt) {
           studentId: getStudentId(),
           apiKey: getGeminiApiKey(),
           context: dt.context,
+          lang: getLang(),
           rows: rows.map(r => ({ I: r.I, values: r.values.map(v => v === "" ? null : parseFloat(v)) }))
         })
       });
@@ -1370,27 +1371,76 @@ function renderLatihan() {
   const panel = document.getElementById("panel-latihan");
   if (currentTopic.status === "ready" && currentTopic.latihan && currentTopic.latihan.length) {
     panel.innerHTML = pjblStageHTML("latihan") + currentTopic.latihan.map((q, i) => {
-      let optionsHTML = "";
       if (q.type === "mcq") {
-        optionsHTML = `<ul class="options">${q.options.map((opt, oi) =>
-          `<li>${String.fromCharCode(65 + oi)}. ${trContent(opt)}${oi === q.correct ? ` <span class="muted">${t("answer.correct")}</span>` : ''}</li>`
+        const optionsHTML = `<ul class="options latihan-options" data-q="${i}">${q.options.map((opt, oi) =>
+          `<li data-o="${oi}"><label><input type="radio" name="lat-q${i}" value="${oi}"> ${String.fromCharCode(65 + oi)}. ${trContent(opt)}</label></li>`
         ).join("")}</ul>`;
+        return `
+          <div class="question-card">
+            <div class="q-title">${t("question.label", { n: i + 1 })}</div>
+            <div>${trContent(q.question)}</div>
+            ${optionsHTML}
+            <button type="button" class="reveal-btn" data-latihan-check="${i}">${t("latihan.checkbtn")}</button>
+            <p class="confirm-feedback small latihan-fb" data-fb="${i}" hidden></p>
+            <div class="solution" data-sol="${i}"><strong>${t("question.solution")}</strong><br>${trContent(q.solution)}</div>
+          </div>`;
       }
       return `
         <div class="question-card">
           <div class="q-title">${t("question.label", { n: i + 1 })}</div>
           <div>${trContent(q.question)}</div>
-          ${optionsHTML}
-          <button class="reveal-btn" onclick="this.nextElementSibling.classList.toggle('show')">${t("question.reveal")}</button>
+          <button type="button" class="reveal-btn" onclick="this.nextElementSibling.classList.toggle('show')">${t("question.reveal")}</button>
           <div class="solution"><strong>${t("question.solution")}</strong><br>${trContent(q.solution)}</div>
         </div>`;
     }).join("");
+    wireLatihanChecks(panel, currentTopic.latihan);
   } else {
     panel.innerHTML = comingSoonHTML("latihan");
   }
   if (window.MathJax && window.MathJax.typesetPromise) {
     window.MathJax.typesetPromise([panel]);
   }
+}
+
+// Soal pilihan ganda: tandai benar/salah + tampilkan pembahasan HANYA
+// setelah siswa memilih jawaban dan menekan "Cek Jawaban" (sebelumnya
+// tanda "(jawaban benar)" ikut tercetak di render awal, jadi siswa bisa
+// membaca kunci jawaban tanpa mencoba dulu - lihat catatan debug repo).
+function wireLatihanChecks(panel, latihan) {
+  panel.querySelectorAll("[data-latihan-check]").forEach(btn => {
+    const idx = parseInt(btn.dataset.latihanCheck, 10);
+    const q = latihan[idx];
+    btn.addEventListener("click", () => {
+      const card = btn.closest(".question-card");
+      const fb = card.querySelector(`.latihan-fb[data-fb="${idx}"]`);
+      const sol = card.querySelector(`.solution[data-sol="${idx}"]`);
+      const picked = card.querySelector(`input[name="lat-q${idx}"]:checked`);
+      if (!picked) {
+        fb.hidden = false;
+        fb.className = "confirm-feedback small warn latihan-fb";
+        fb.textContent = t("latihan.pickfirst");
+        return;
+      }
+      const pv = parseInt(picked.value, 10);
+      const ok = pv === q.correct;
+      card.querySelectorAll(".latihan-options li").forEach((li, oi) => {
+        li.classList.remove("opt-correct", "opt-wrong");
+        const old = li.querySelector(".opt-correct-tag");
+        if (old) old.remove();
+        if (oi === q.correct) {
+          li.classList.add("opt-correct");
+          (li.querySelector("label") || li).insertAdjacentHTML("beforeend", ` <span class="muted opt-correct-tag">${t("answer.correct")}</span>`);
+        } else if (oi === pv) {
+          li.classList.add("opt-wrong");
+        }
+      });
+      fb.hidden = false;
+      fb.className = "confirm-feedback small " + (ok ? "ok" : "warn") + " latihan-fb";
+      fb.textContent = ok ? t("latihan.correct") : t("latihan.wrong", { letter: String.fromCharCode(65 + q.correct) });
+      sol.classList.add("show");
+      if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise([card]).catch(() => {});
+    });
+  });
 }
 
 function comingSoonHTML(section) {
@@ -1421,6 +1471,22 @@ function setupLabForTopic() {
   document.getElementById("pf-vistype").selectedIndex = 0;
   document.getElementById("pf-level").selectedIndex = 1;
   document.getElementById("final-prompt").value = "";
+  document.getElementById("pf-build-status").textContent = "";
+
+  // Lembar rumus topik ditampilkan di samping generator (dulu hanya
+  // ditempelkan diam-diam ke prompt tersembunyi, siswa tidak pernah
+  // melihatnya) - supaya siswa mengacu ke konsep yang tepat SEBELUM
+  // menulis prompt, bukan menebak dari ingatan yang mungkin keliru.
+  const formulaBox = document.getElementById("lab-formula-ref-box");
+  const formulaContent = document.getElementById("lab-formula-ref-content");
+  if (currentTopic.formulaSheet) {
+    formulaBox.hidden = false;
+    formulaContent.innerHTML = trContent(currentTopic.formulaSheet);
+    if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise([formulaContent]).catch(() => {});
+  } else {
+    formulaBox.hidden = true;
+    formulaContent.innerHTML = "";
+  }
   document.getElementById("preview-frame").removeAttribute("srcdoc");
   document.getElementById("preview-frame").hidden = false;
   document.getElementById("code-editor").value = "";
@@ -1656,10 +1722,11 @@ function renderVirtualLabHTML(vl) {
     <div class="eks-datatable-section">
       <h4>${t("eksdata.title")}</h4>
       <table class="eks-datatable" id="vlab-datatable">
-        <thead><tr><th>${dt.independentLabel}</th>${repHeaders}<th>${dt.replicateLabel} rata-rata</th><th>${dt.derivedLabel}</th></tr></thead>
+        <thead><tr><th>${dt.independentLabel}</th>${repHeaders}<th>${dt.replicateLabel} ${t("eksdata.mean")}</th><th>${dt.derivedLabel}</th></tr></thead>
         <tbody>${rowsHTML}</tbody>
       </table>
       <svg id="vlab-graph" class="vlab-graph" viewBox="0 0 320 220" preserveAspectRatio="xMidYMid meet"></svg>
+      <div id="vlab-2pt-readout" class="vlab-2pt-readout"></div>
     </div>
 
     <div class="prompt-form">
@@ -1705,9 +1772,41 @@ function recalcVlabRow(tr) {
   drawVlabGraph();
 }
 
+// Regresi linear sederhana (least squares) atas titik data tabel - satu
+// sumber kebenaran dipakai baik untuk menggambar garis terbaik di grafik
+// maupun untuk memeriksa jawaban gradien/B yang dihitung siswa sendiri.
+function vlabFit(points) {
+  const n = points.length;
+  if (n < 2) return null;
+  const sumX = points.reduce((a, r) => a + r.I, 0);
+  const sumY = points.reduce((a, r) => a + r.F, 0);
+  const sumXY = points.reduce((a, r) => a + r.I * r.F, 0);
+  const sumX2 = points.reduce((a, r) => a + r.I * r.I, 0);
+  const denom = n * sumX2 - sumX * sumX;
+  if (Math.abs(denom) < 1e-12) return null;
+  const m = (n * sumXY - sumX * sumY) / denom;
+  const c = (sumY - m * sumX) / n;
+  return { m, c };
+}
+function vlabGraphGeom(points) {
+  const W = 320, H = 220, padL = 38, padB = 30, padT = 12, padR = 14;
+  const maxI = Math.max(...points.map(p => p.I), 0) * 1.15 || 1;
+  const maxF = Math.max(...points.map(p => p.F), 0) * 1.25 || 0.01;
+  const xScale = (I) => padL + (I / maxI) * (W - padL - padR);
+  const yScale = (F) => (H - padB) - (F / maxF) * (H - padB - padT);
+  const xInv = (px) => ((px - padL) / (W - padL - padR)) * maxI;
+  return { W, H, padL, padB, padT, padR, maxI, maxF, xScale, yScale, xInv };
+}
+
+// Dua titik yang bisa digeser siswa SEPANJANG garis terbaik ("alat bantu
+// menggambar/membaca garis") - direset tiap topik baru dipilih (lihat
+// wireVirtualLab) supaya tidak membawa posisi dari topik sebelumnya.
+let vlabLinePts = null;
+
 function drawVlabGraph() {
   const svg = document.getElementById("vlab-graph");
   const table = document.getElementById("vlab-datatable");
+  const readout = document.getElementById("vlab-2pt-readout");
   if (!svg || !table) return;
   const rows = Array.from(table.querySelectorAll("tbody tr"));
   const points = rows.map(tr => {
@@ -1716,24 +1815,101 @@ function drawVlabGraph() {
     return isNaN(F) ? null : { I, F };
   }).filter(Boolean);
 
-  const W = 320, H = 220, padL = 38, padB = 30, padT = 12, padR = 14;
+  const geom = vlabGraphGeom(points);
+  const { W, H, padL, padB, padT, padR, xScale, yScale } = geom;
   let html = `<line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="var(--border)" stroke-width="1.5"/>` +
     `<line x1="${padL}" y1="${H - padB}" x2="${padL}" y2="${padT}" stroke="var(--border)" stroke-width="1.5"/>` +
     `<text x="${(W + padL - padR) / 2}" y="${H - 8}" font-size="10" fill="var(--muted)" text-anchor="middle">${t("vlab.graph.axis.i")}</text>` +
     `<text x="6" y="${padT + 4}" font-size="10" fill="var(--muted)">${t("vlab.graph.axis.f")}</text>`;
-  if (points.length) {
-    const maxI = Math.max(...points.map(p => p.I)) * 1.15 || 1;
-    const maxF = Math.max(...points.map(p => p.F)) * 1.25 || 0.01;
-    const xScale = (I) => padL + (I / maxI) * (W - padL - padR);
-    const yScale = (F) => (H - padB) - (F / maxF) * (H - padB - padT);
-    html += points.map(p =>
-      `<circle cx="${xScale(p.I).toFixed(1)}" cy="${yScale(p.F).toFixed(1)}" r="4" fill="var(--accent)"/>`
-    ).join("");
+
+  const fit = points.length >= 2 ? vlabFit(points) : null;
+  if (fit) {
+    const dataIs = points.map(p => p.I);
+    const dataMin = Math.min(...dataIs), dataMax = Math.max(...dataIs);
+    if (!vlabLinePts || vlabLinePts.i1 === undefined || vlabLinePts.i2 === undefined ||
+      vlabLinePts.i1 < dataMin || vlabLinePts.i1 > dataMax || vlabLinePts.i2 < dataMin || vlabLinePts.i2 > dataMax) {
+      vlabLinePts = { i1: dataMin + 0.15 * (dataMax - dataMin), i2: dataMin + 0.85 * (dataMax - dataMin) };
+    }
+    html += `<line class="vlab-fitline" x1="${xScale(0).toFixed(1)}" y1="${yScale(fit.c).toFixed(1)}" x2="${xScale(geom.maxI).toFixed(1)}" y2="${yScale(fit.m * geom.maxI + fit.c).toFixed(1)}"/>`;
   }
+  html += points.map(p =>
+    `<circle cx="${xScale(p.I).toFixed(1)}" cy="${yScale(p.F).toFixed(1)}" r="4" fill="var(--accent)"/>`
+  ).join("");
+
+  if (fit) {
+    const f1 = fit.m * vlabLinePts.i1 + fit.c, f2 = fit.m * vlabLinePts.i2 + fit.c;
+    const x1s = xScale(vlabLinePts.i1), y1s = yScale(f1), x2s = xScale(vlabLinePts.i2), y2s = yScale(f2);
+    html += `<line class="vlab-tri" x1="${x1s.toFixed(1)}" y1="${y1s.toFixed(1)}" x2="${x2s.toFixed(1)}" y2="${y1s.toFixed(1)}"/>` +
+      `<line class="vlab-tri" x1="${x2s.toFixed(1)}" y1="${y1s.toFixed(1)}" x2="${x2s.toFixed(1)}" y2="${y2s.toFixed(1)}"/>` +
+      `<circle class="vlab-pt-drag" data-pt="1" cx="${x1s.toFixed(1)}" cy="${y1s.toFixed(1)}" r="6"/>` +
+      `<circle class="vlab-pt-drag" data-pt="2" cx="${x2s.toFixed(1)}" cy="${y2s.toFixed(1)}" r="6"/>`;
+  }
+
   svg.innerHTML = html;
+  vlabWireGraphDrag(svg);
+  vlabUpdateReadout(readout, fit);
+}
+
+// Pesan di bawah grafik yang membaca I/F dari kedua titik yang bisa digeser
+// siswa, dan menghitung gradiennya - supaya siswa mengisi 2c dari GRAFIK
+// (baca dua titik pada garis), bukan menebak dari tabel atau rumus.
+function vlabUpdateReadout(readout, fit) {
+  if (!readout) return;
+  if (!fit || !vlabLinePts) {
+    readout.innerHTML = `<p class="muted small">${t("vlab.graph.needline")}</p>`;
+    return;
+  }
+  const f1 = fit.m * vlabLinePts.i1 + fit.c, f2 = fit.m * vlabLinePts.i2 + fit.c;
+  const grad = (f2 - f1) / (vlabLinePts.i2 - vlabLinePts.i1);
+  readout.innerHTML = `<p class="muted small">${t("vlab.graph.2pt.desc")}</p>` +
+    `<p class="small">${t("vlab.graph.2pt.points", { i1: vlabLinePts.i1.toFixed(3), f1: f1.toFixed(4), i2: vlabLinePts.i2.toFixed(3), f2: f2.toFixed(4) })}</p>` +
+    `<p class="small"><strong>${t("vlab.graph.2pt.grad", { val: grad.toFixed(4) })}</strong></p>`;
+  if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise([readout]).catch(() => {});
+}
+
+// Drag horizontal-saja (F dihitung dari persamaan garis terbaik pada posisi
+// I yang dipilih) - listener pindah/lepas dipasang di window (bukan di
+// elemen titik yang ikut diganti tiap redraw svg.innerHTML) supaya drag
+// tidak putus di tengah jalan saat drawVlabGraph() menggambar ulang.
+function vlabWireGraphDrag(svg) {
+  if (svg._vlabDragWired) return;
+  svg._vlabDragWired = true;
+  svg.addEventListener("pointerdown", (e) => {
+    const handle = e.target.closest(".vlab-pt-drag");
+    if (!handle) return;
+    e.preventDefault();
+    const ptKey = handle.dataset.pt === "1" ? "i1" : "i2";
+    const table = document.getElementById("vlab-datatable");
+    if (!table) return;
+    const points = Array.from(table.querySelectorAll("tbody tr")).map(tr => {
+      const I = parseFloat(tr.dataset.i);
+      const F = parseFloat(tr.querySelector(".eks-dt-f").textContent);
+      return isNaN(F) ? null : { I, F };
+    }).filter(Boolean);
+    if (points.length < 2) return;
+    const dataIs = points.map(p => p.I);
+    const dataMin = Math.min(...dataIs), dataMax = Math.max(...dataIs);
+    const geom = vlabGraphGeom(points);
+    function move(ev) {
+      const rect = svg.getBoundingClientRect();
+      const px = (ev.clientX - rect.left) * (geom.W / rect.width);
+      let I = geom.xInv(px);
+      I = Math.max(dataMin, Math.min(dataMax, I));
+      vlabLinePts = vlabLinePts || {};
+      vlabLinePts[ptKey] = I;
+      drawVlabGraph();
+    }
+    function up() {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    }
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  });
 }
 
 function wireVirtualLab(topic, vl) {
+  vlabLinePts = null;
   const card = document.getElementById("eks-variant-content");
   if (!card) return;
   const table = card.querySelector("#vlab-datatable");
@@ -1792,18 +1968,27 @@ function wireVirtualLab(topic, vl) {
       return isNaN(F) ? null : { I, F };
     }).filter(Boolean);
     if (rows.length < 3) {
+      checkStatus.className = "muted small";
       checkStatus.textContent = t("vlab.checkneeddata");
       return;
     }
-    const n = rows.length;
-    const sumX = rows.reduce((a, r) => a + r.I, 0);
-    const sumY = rows.reduce((a, r) => a + r.F, 0);
-    const sumXY = rows.reduce((a, r) => a + r.I * r.F, 0);
-    const sumX2 = rows.reduce((a, r) => a + r.I * r.I, 0);
-    const denom = (n * sumX2 - sumX * sumX);
-    const gradient = denom !== 0 ? (n * sumXY - sumX * sumY) / denom : 0;
-    const B = gradient / vl.apparatus.lengthM;
-    checkStatus.textContent = t("vlab.checkresult", { grad: gradient.toFixed(4), b: B.toFixed(3) });
+    const gradVal = parseFloat(String(gradInput.value).replace(",", "."));
+    const bVal = parseFloat(String(bInput.value).replace(",", "."));
+    if (isNaN(gradVal) || isNaN(bVal)) {
+      checkStatus.className = "muted small";
+      checkStatus.textContent = t("vlab.checkneedvalue");
+      return;
+    }
+    const fit = vlabFit(rows);
+    const gradient = fit ? fit.m : 0;
+    const B = vl.apparatus.lengthM ? gradient / vl.apparatus.lengthM : 0;
+    const tolPct = 15;
+    const gradOk = gradient !== 0 && Math.abs(gradVal - gradient) / Math.abs(gradient) * 100 <= tolPct;
+    const bOk = B !== 0 && Math.abs(bVal - B) / Math.abs(B) * 100 <= tolPct;
+    const ok = gradOk && bOk;
+    checkStatus.className = "small " + (ok ? "eks-dt-status-ok" : "eks-dt-status-warn");
+    checkStatus.innerHTML = t(ok ? "vlab.checkresult.correct" : "vlab.checkresult.wrong", { grad: gradient.toFixed(4), b: B.toFixed(3) });
+    if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise([checkStatus]).catch(() => {});
   });
 
   // Sejak restrukturisasi 3-varian, data varian virtual TIDAK lagi hanya
@@ -1847,6 +2032,7 @@ function wireVirtualLab(topic, vl) {
           studentId: getStudentId(),
           apiKey: getGeminiApiKey(),
           context: vl.dataTable.context,
+          lang: getLang(),
           rows: rows.map(r => ({ I: r.I, values: r.values.map(v => v === "" ? null : parseFloat(v)) }))
         })
       });
@@ -1905,6 +2091,18 @@ document.getElementById("pf-build-btn").addEventListener("click", () => {
   const goal = document.getElementById("pf-goal").value.trim();
   const level = document.getElementById("pf-level").value;
   const extra = document.getElementById("pf-extra").value.trim();
+  const buildStatus = document.getElementById("pf-build-status");
+
+  // Pemahaman yang kabur -> prompt yang kabur -> hasil yang membingungkan.
+  // Guardrail ringan: wajib jelaskan tujuan pembelajaran dengan kalimat
+  // (bukan cuma satu-dua kata) sebelum prompt disusun, supaya siswa
+  // benar-benar merumuskan pemahamannya dulu, bukan asal klik Generate.
+  if (goal.length < 10) {
+    buildStatus.className = "small eks-dt-status-warn";
+    buildStatus.textContent = t("lab.needgoal");
+    return;
+  }
+  buildStatus.textContent = "";
 
   const topicTitle = trContent(currentTopic.title);
   let prompt = t("promptgen.header", { topic: topicTitle, concept: concept });

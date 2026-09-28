@@ -57,8 +57,8 @@ const LKPD_MAGNETIC_PREDICT = {
   ],
   correct: 1,
   explain: LKPD_B(
-    "$F = BIL$: $F$ berbanding lurus dengan $I$, jadi $I$ dua kali lipat membuat $F$ dua kali lipat.",
-    "$F = BIL$: $F$ is directly proportional to $I$, so doubling $I$ doubles $F$."
+    "Prediksi ini memakai teori $F = BIL$: karena $F$ sebanding $I$, $I$ dua kali lipat diprediksi membuat $F$ dua kali lipat. Ingat, ini baru PREDIKSI - nanti bentuk grafik $F$-$I$ dari data percobaanmu sendiri yang akan MENGONFIRMASI (atau membantah) prediksi ini. Saat menulis kesimpulan nanti, alasanmu harus datang dari grafik ('grafik berupa garis lurus melalui titik asal, jadi F sebanding I'), bukan sekadar mengutip rumus ini lagi.",
+    "This prediction uses the theory $F = BIL$: since $F$ is proportional to $I$, doubling $I$ is predicted to double $F$. Remember, this is only a PREDICTION - later, the shape of the $F$-$I$ graph from your own data is what will CONFIRM (or contradict) it. When you write your conclusion, your reasoning must come from the graph ('the graph is a straight line through the origin, so F is proportional to I'), not just from quoting this formula again."
   ),
   hint: LKPD_B("Lihat rumus $F = BIL$: bagaimana $F$ berubah kalau hanya $I$ yang berubah?", "Look at $F = BIL$: how does $F$ change if only $I$ changes?")
 };
@@ -253,7 +253,7 @@ const LKPD_MAGNETIC_SIMPLE = {
         LKPD_B("Hambatan kumparan", "The resistance of the coil")
       ],
       correct: 0,
-      explain: LKPD_B("Dari $F = N B I L$, grafik $F$-$I$ punya gradien $N B L$.", "From $F = N B I L$, the $F$-$I$ graph has gradient $N B L$."),
+      explain: LKPD_B("Grafik $F$-$I$-mu berupa garis lurus melalui/dekat titik asal, jadi $F$ sebanding $I$ - ini sesuai dengan $F = N B I L$, sehingga gradien garis itu sama dengan $N B L$.", "Your $F$-$I$ graph is a straight line through/near the origin, so $F$ is proportional to $I$ - this matches $F = N B I L$, so the line's gradient equals $N B L$."),
       hint: LKPD_B("Bandingkan $F = (NBL) \\times I$ dengan bentuk $y = m x$.", "Compare $F = (NBL) \\times I$ with the form $y = m x$.")
     },
     LKPD_MAGNETIC_Q_REVERSE,
@@ -433,7 +433,7 @@ const LKPD_MAGNETIC_LAB = {
         LKPD_B("Massa pada neraca", "The mass on the balance")
       ],
       correct: 0,
-      explain: LKPD_B("Karena $F = B I L$, gradien grafik $F$-$I$ adalah $B L$; $B$ didapat setelah dibagi $L$.", "Since $F = B I L$, the $F$-$I$ gradient is $B L$; $B$ follows after dividing by $L$."),
+      explain: LKPD_B("Grafik $F$-$I$-mu berupa garis lurus melalui/dekat titik asal, jadi $F$ sebanding $I$ - ini sesuai dengan $F = B I L$, sehingga gradien garis itu sama dengan $B L$; $B$ didapat setelah dibagi $L$.", "Your $F$-$I$ graph is a straight line through/near the origin, so $F$ is proportional to $I$ - this matches $F = B I L$, so the line's gradient equals $B L$; $B$ follows after dividing by $L$."),
       hint: LKPD_B("Bandingkan $F = (BL) \\times I$ dengan bentuk $y = m x$.", "Compare $F = (BL) \\times I$ with the form $y = m x$.")
     },
     LKPD_MAGNETIC_Q_REVERSE,

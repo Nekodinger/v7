@@ -321,6 +321,7 @@ body.nav-pinned .topic-nav {
   box-shadow: var(--shadow-lg);
 }
 .gate-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+.gate-brand .gate-lang-switch { margin-left: auto; }
 .gate-brand .brand-icon { width: 36px; height: 36px; }
 .gate-brand .brand-title { font-family: "Sora", sans-serif; font-weight: 700; font-size: 1.05rem; }
 .gate-step h2 { margin: 0 0 8px; font-size: 1.2rem; }
@@ -555,6 +556,10 @@ body.nav-pinned .topic-nav {
   display: none;
 }
 .solution.show { display: block; }
+.question-card .options li label { cursor: pointer; }
+.question-card .latihan-options li.opt-correct { color: var(--good); font-weight: 600; }
+.question-card .latihan-options li.opt-wrong { color: var(--danger); }
+.question-card .opt-correct-tag { font-weight: 600; }
 
 .sim-embed {
   border: 1px solid var(--border);
@@ -759,6 +764,27 @@ body.nav-pinned .topic-nav {
 @media (max-width: 560px) {
   .vlab-calc-row { grid-template-columns: 1fr; }
 }
+.vlab-fitline { stroke: var(--accent); stroke-width: 1.6; }
+.vlab-tri { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.vlab-pt-drag { fill: var(--warn); stroke: var(--panel); stroke-width: 1.5; cursor: grab; touch-action: none; }
+.vlab-pt-drag:hover, .vlab-pt-drag:active { fill: var(--accent); cursor: grabbing; }
+.vlab-2pt-readout { font-size: 0.85rem; color: var(--text); margin: 4px 0 16px; }
+.vlab-2pt-readout p { margin: 4px 0; }
+
+/* Makerspace: lembar rumus topik sebagai referensi cepat di samping
+   generator prompt, supaya siswa mengacu ke konsep yang benar dulu
+   sebelum menulis prompt (bukan menebak-nebak). */
+.lab-formula-ref {
+  background: var(--panel-light);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  margin: 4px 0 16px;
+  font-size: 0.88rem;
+}
+.lab-formula-ref summary { cursor: pointer; font-weight: 600; color: var(--accent); }
+.lab-formula-ref[open] summary { margin-bottom: 8px; }
+#lab-formula-ref-content { font-size: 0.86rem; line-height: 1.55; }
 
 .prompt-form label {
   display: block;

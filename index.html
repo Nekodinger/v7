@@ -26,6 +26,10 @@
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.3" fill="currentColor"/><ellipse cx="12" cy="12" rx="9.5" ry="3.8" fill="none" stroke="currentColor" stroke-width="1.4"/><ellipse cx="12" cy="12" rx="9.5" ry="3.8" fill="none" stroke="currentColor" stroke-width="1.4" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="9.5" ry="3.8" fill="none" stroke="currentColor" stroke-width="1.4" transform="rotate(120 12 12)"/></svg>
       </span>
       <span class="brand-title">Physics Sandbox</span>
+      <div class="lang-switch gate-lang-switch" id="gate-lang-switch" role="group" data-i18n-title="header.lang.title" title="Ganti bahasa">
+        <button type="button" class="lang-switch-btn" data-lang="id">ID</button>
+        <button type="button" class="lang-switch-btn" data-lang="en">EN</button>
+      </div>
     </div>
 
     <!-- Langkah 1: API key Gemini (wajib untuk semua orang) -->
@@ -232,6 +236,11 @@
               <h3><span class="step-num">1</span> <span data-i18n="lab.card1.title">Generator Prompt Terstruktur</span></h3>
               <p class="muted" data-i18n="lab.card1.desc">Isi kolom-kolom ini supaya prompt yang dikirim ke AI jelas dan terarah, tidak perlu jago menulis prompt dari nol.</p>
 
+              <details class="lab-formula-ref" id="lab-formula-ref-box" hidden>
+                <summary data-i18n="lab.formularef.summary">Lihat lembar rumus topik ini dulu (referensi cepat)</summary>
+                <div id="lab-formula-ref-content"></div>
+              </details>
+
               <form id="prompt-form" class="prompt-form">
                 <label data-i18n="lab.field.concept">Konsep fisika spesifik
                   <select id="pf-concept"></select>
@@ -267,6 +276,7 @@
                 </label>
 
                 <button type="button" id="pf-build-btn" class="btn btn-secondary" data-i18n="lab.build.btn">Susun Prompt</button>
+                <p id="pf-build-status" class="muted small"></p>
               </form>
             </div>
 

@@ -1314,12 +1314,16 @@ function handleEksperimenDataSave(body) {
   const rows = Array.isArray(body.rows) ? body.rows.slice(0, 20) : [];
   const apiKey = (body.apiKey || "").toString().trim();
   const model = (body.model || "").toString().trim() || DEFAULT_MODEL;
+  // Bahasa UI siswa saat menekan Simpan Data (dikirim klien lewat getLang())
+  // - dipakai supaya umpan balik AI dan pesan error menjawab dalam bahasa
+  // yang sama seperti tampilan situsnya, bukan selalu Bahasa Indonesia.
+  const lang = body.lang === "en" ? "en" : "id";
 
   if (!studentId) {
-    return jsonResponse({ error: "Identitas siswa tidak ditemukan, coba masuk ulang lewat Beranda." });
+    return jsonResponse({ error: lang === "en" ? "Student identity not found, try signing in again from the Home page." : "Identitas siswa tidak ditemukan, coba masuk ulang lewat Beranda." });
   }
   if (!rows.length) {
-    return jsonResponse({ error: "Tidak ada data pengamatan untuk disimpan." });
+    return jsonResponse({ error: lang === "en" ? "No observation data to save." : "Tidak ada data pengamatan untuk disimpan." });
   }
 
   let sheetError = "";
@@ -1329,7 +1333,7 @@ function handleEksperimenDataSave(body) {
     sheetError = e.message;
   }
 
-  const check = checkEksperimenDataWithAI(context, rows, apiKey, model);
+  const check = checkEksperimenDataWithAI(context, rows, apiKey, model, lang);
 
   const resp = { ok: !sheetError, feedback: check.feedback, flagged: check.flagged, savedAt: Date.now() };
   if (sheetError) resp.sheetError = sheetError;
@@ -1407,10 +1411,13 @@ function saveEksperimenDataToSheet(topicId, studentId, rows, meta) {
 // tersimpan ke spreadsheet lewat saveEksperimenDataToSheet di atas
 // terlepas dari ada/tidaknya API key - AI murni fitur tambahan, bukan
 // syarat penyimpanan).
-function checkEksperimenDataWithAI(context, rows, apiKey, model) {
+function checkEksperimenDataWithAI(context, rows, apiKey, model, lang) {
+  const isEn = lang === "en";
   if (!apiKey) {
     return {
-      feedback: "Data tersimpan. Tambahkan API key Gemini pribadimu di Beranda supaya AI bisa ikut memeriksa kewajaran datamu setiap kali Save.",
+      feedback: isEn
+        ? "Data saved. Add your personal Gemini API key on the Home page so AI can also check your data's plausibility every time you Save."
+        : "Data tersimpan. Tambahkan API key Gemini pribadimu di Beranda supaya AI bisa ikut memeriksa kewajaran datamu setiap kali Save.",
       flagged: false
     };
   }
@@ -1419,15 +1426,16 @@ function checkEksperimenDataWithAI(context, rows, apiKey, model) {
     return "I=" + r.I + " A -> pembacaan Δm: " + (reps || "(kosong)");
   }).join("\n");
 
+  const langInstruction = isEn ? "English" : "Bahasa Indonesia";
   const prompt = [
     "Kamu memeriksa data eksperimen fisika yang baru saja dicatat siswa SMA (Cambridge AS/A Level).",
     "Konteks eksperimen: " + context,
     "Data yang dicatat siswa:",
     rowsText,
     "",
-    "Tugasmu: periksa apakah data ini masuk akal secara fisika sesuai konteks di atas (tren naik/turun yang diharapkan, replikasi yang konsisten satu sama lain, tidak ada nilai negatif/nol yang janggal di tempat yang seharusnya tidak nol, urutan besaran wajar). Beri umpan balik SINGKAT (maksimal 3 kalimat) dalam Bahasa Indonesia yang membantu siswa menyadari kemungkinan KESALAHAN PENCATATAN.",
+    "Tugasmu: periksa apakah data ini masuk akal secara fisika sesuai konteks di atas (tren naik/turun yang diharapkan, replikasi yang konsisten satu sama lain, tidak ada nilai negatif/nol yang janggal di tempat yang seharusnya tidak nol, urutan besaran wajar). Beri umpan balik SINGKAT (maksimal 3 kalimat) dalam " + langInstruction + " yang membantu siswa menyadari kemungkinan KESALAHAN PENCATATAN.",
     "JANGAN menghitung, menyebutkan, atau membocorkan nilai akhir (mis. gradien, B, kesimpulan analisis) untuk siswa - itu bagian yang harus mereka kerjakan sendiri.",
-    "Balas HANYA dengan JSON persis berbentuk: {\"flagged\": true/false, \"feedback\": \"...\"} (flagged=true kalau ada data yang tampak janggal/perlu dicek ulang, false kalau data terlihat wajar)."
+    "Balas HANYA dengan JSON persis berbentuk: {\"flagged\": true/false, \"feedback\": \"...\"} (flagged=true kalau ada data yang tampak janggal/perlu dicek ulang, false kalau data terlihat wajar; feedback dalam " + langInstruction + ")."
   ].join("\n");
 
   const payload = {
@@ -1442,15 +1450,18 @@ function checkEksperimenDataWithAI(context, rows, apiKey, model) {
   const url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + encodeURIComponent(apiKey);
   const result = fetchGeminiWithRetry(url, payload, 2, 1000, 4000);
   if (result.status !== 200) {
-    return { feedback: "Data tersimpan, tapi pemeriksaan AI gagal saat ini (" + describeGeminiError(result.status, result.data) + ").", flagged: false };
+    return {
+      feedback: (isEn ? "Data saved, but the AI check failed this time (" : "Data tersimpan, tapi pemeriksaan AI gagal saat ini (") + describeGeminiError(result.status, result.data) + ").",
+      flagged: false
+    };
   }
   const candidate = result.data.candidates && result.data.candidates[0];
   const text = (candidate && candidate.content && candidate.content.parts && candidate.content.parts[0] && candidate.content.parts[0].text) || "";
   try {
     const parsed = JSON.parse(text);
-    return { feedback: String(parsed.feedback || "Data terlihat wajar.").slice(0, 800), flagged: !!parsed.flagged };
+    return { feedback: String(parsed.feedback || (isEn ? "Data looks reasonable." : "Data terlihat wajar.")).slice(0, 800), flagged: !!parsed.flagged };
   } catch (e) {
-    return { feedback: text ? text.slice(0, 800) : "Data tersimpan, tapi respons AI tidak bisa dibaca.", flagged: false };
+    return { feedback: text ? text.slice(0, 800) : (isEn ? "Data saved, but the AI response could not be read." : "Data tersimpan, tapi respons AI tidak bisa dibaca."), flagged: false };
   }
 }
 

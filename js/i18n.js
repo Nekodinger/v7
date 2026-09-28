@@ -198,6 +198,14 @@ const I18N_STRINGS = {
   "question.label": { id: "Soal {{n}}", en: "Question {{n}}" },
   "question.solution": { id: "Pembahasan:", en: "Solution:" },
   "question.reveal": { id: "Lihat Pembahasan", en: "Show Solution" },
+  "latihan.checkbtn": { id: "Cek Jawaban", en: "Check Answer" },
+  "latihan.pickfirst": { id: "Pilih salah satu jawaban dulu.", en: "Pick an answer first." },
+  "latihan.correct": { id: "Benar!", en: "Correct!" },
+  "latihan.wrong": { id: "Belum tepat, jawaban yang benar: {{letter}}.", en: "Not quite, the correct answer is: {{letter}}." },
+
+  /* ---------------- Makerspace: referensi rumus & pemandu prompt ---------------- */
+  "lab.formularef.summary": { id: "Lihat lembar rumus topik ini dulu (referensi cepat)", en: "See this topic's formula sheet first (quick reference)" },
+  "lab.needgoal": { id: "Isi dulu \"Tujuan pembelajaran\" dengan kalimat yang jelas (bukan cuma satu-dua kata) supaya prompt yang disusun benar-benar mencerminkan pemahamanmu, baru klik Susun Prompt lagi. Pemahaman yang kurang jelas di sini biasanya berujung pada simulasi yang membingungkan.", en: "Fill in \"Learning objective\" with a clear sentence (not just one or two words) so the prompt really reflects your understanding, then click Susun Prompt again. A vague understanding here usually leads to a confusing simulation." },
 
   /* ---------------- Chatbot / Tutor Fisika ---------------- */
   "chatbot.toggle.label": { id: "Tutor Fisika", en: "Physics Tutor" },
@@ -308,10 +316,10 @@ const I18N_STRINGS = {
   "teacher.session.ending": { id: "Mengakhiri sesi...", en: "Ending session..." },
 
   /* ---------------- Tahap PjBL (subjudul di atas tiap panel tab) ---------------- */
-  "pjbl.stage.materi": { id: "Tahap PjBL: Penentuan Pertanyaan Mendasar &amp; Perencanaan Proyek", en: "PjBL Stage: Essential Question &amp; Project Planning" },
-  "pjbl.stage.eksperimen": { id: "Tahap PjBL: Mendesain Perencanaan Proyek, Menyusun Jadwal, &amp; Memonitor Kemajuan (perlu konfirmasi guru)", en: "PjBL Stage: Designing the Project Plan, Scheduling, &amp; Monitoring Progress (needs teacher confirmation)" },
+  "pjbl.stage.materi": { id: "Tahap PjBL: Penentuan Pertanyaan Mendasar & Perencanaan Proyek", en: "PjBL Stage: Essential Question & Project Planning" },
+  "pjbl.stage.eksperimen": { id: "Tahap PjBL: Mendesain Perencanaan Proyek, Menyusun Jadwal, & Memonitor Kemajuan (perlu konfirmasi guru)", en: "PjBL Stage: Designing the Project Plan, Scheduling, & Monitoring Progress (needs teacher confirmation)" },
   "pjbl.stage.latihan": { id: "Tahap PjBL: Penguatan Konsep (checkpoint formatif mandiri)", en: "PjBL Stage: Concept Reinforcement (self-checked formative checkpoint)" },
-  "pjbl.stage.lab": { id: "Tahap PjBL: Menguji Hasil &amp; Mengevaluasi Pengalaman (perlu konfirmasi guru untuk menandai topik selesai)", en: "PjBL Stage: Testing the Outcome &amp; Evaluating the Experience (needs teacher confirmation to mark the topic complete)" },
+  "pjbl.stage.lab": { id: "Tahap PjBL: Menguji Hasil & Mengevaluasi Pengalaman (perlu konfirmasi guru untuk menandai topik selesai)", en: "PjBL Stage: Testing the Outcome & Evaluating the Experience (needs teacher confirmation to mark the topic complete)" },
 
   /* ---------------- Modal konfirmasi pemahaman (generik) ---------------- */
   "confirm.checkbtn": { id: "Periksa Jawaban", en: "Check Answers" },
@@ -331,13 +339,13 @@ const I18N_STRINGS = {
 
   /* ---------------- Gate Eksperimen (self-check + konfirmasi guru) ---------------- */
   "gate.eksperimen.title": { id: "Konfirmasi Pemahaman: Eksperimen", en: "Understanding Check: Experiment" },
-  "gate.eksperimen.desc": { id: "Jawab pertanyaan tentang hubungan antar-variabel &amp; pengelolaan data pada eksperimen ini. Kalau semua benar, permintaanmu dikirim ke guru untuk dikonfirmasi sebelum Latihan Soal dan Makerspace terbuka.", en: "Answer these questions about the relationship between variables and data handling in this experiment. If all correct, your request is sent to your teacher for confirmation before Practice Questions and Makerspace unlock." },
+  "gate.eksperimen.desc": { id: "Jawab pertanyaan tentang hubungan antar-variabel & pengelolaan data pada eksperimen ini. Kalau semua benar, permintaanmu dikirim ke guru untuk dikonfirmasi sebelum Latihan Soal dan Makerspace terbuka.", en: "Answer these questions about the relationship between variables and data handling in this experiment. If all correct, your request is sent to your teacher for confirmation before Practice Questions and Makerspace unlock." },
   "gate.eksperimen.fallback": { id: "Saya sudah menyelesaikan eksperimen ini dan siap dikonfirmasi guru.", en: "I have completed this experiment and I'm ready for teacher confirmation." },
-  "gate.eksperimen.submitbtn": { id: "Periksa &amp; Kirim ke Guru", en: "Check &amp; Send to Teacher" },
+  "gate.eksperimen.submitbtn": { id: "Periksa & Kirim ke Guru", en: "Check & Send to Teacher" },
   "gate.eksperimen.autosummary": { id: "Siswa menjawab benar semua pertanyaan konfirmasi Eksperimen.", en: "Student answered all Experiment confirmation questions correctly." },
 
   /* ---------------- Gate Makerspace (refleksi + konfirmasi guru) ---------------- */
-  "lab.reflection.title": { id: "Refleksi &amp; Validasi Simulasi (untuk konfirmasi guru)", en: "Reflection &amp; Simulation Validation (for teacher confirmation)" },
+  "lab.reflection.title": { id: "Refleksi & Validasi Simulasi (untuk konfirmasi guru)", en: "Reflection & Simulation Validation (for teacher confirmation)" },
   "lab.reflection.desc": { id: "Sebelum topik ini ditandai selesai, jelaskan singkat apakah simulasi yang kamu hasilkan sudah sesuai hukum/konsep fisika topik ini dan bagaimana kamu mengeceknya (misalnya coba nilai ekstrem/nol pada variabelnya).", en: "Before this topic is marked complete, briefly explain whether the simulation you produced matches this topic's physics laws/concepts and how you checked it (e.g. trying extreme/zero values for its variables)." },
   "lab.reflection.placeholder": { id: "misal: saya coba set arus = 0, gaya pada simulasi juga otomatis jadi 0, sesuai rumus F = BIL...", en: "e.g. I tried setting current = 0, and the force in the simulation also became 0, matching F = BIL..." },
   "lab.reflection.submitbtn": { id: "Kirim untuk Konfirmasi Guru", en: "Send for Teacher Confirmation" },
@@ -345,13 +353,13 @@ const I18N_STRINGS = {
 
   /* ---------------- Notifikasi & banner status gate (siswa) ---------------- */
   "gate.submitted.toast": { id: "Terkirim! Menunggu konfirmasi guru.", en: "Sent! Waiting for teacher confirmation." },
-  "gate.eksperimen.approved.toast": { id: "Guru sudah mengonfirmasi Eksperimen-mu! Latihan Soal &amp; Makerspace kini terbuka.", en: "Your teacher confirmed your Experiment! Practice Questions &amp; Makerspace are now unlocked." },
+  "gate.eksperimen.approved.toast": { id: "Guru sudah mengonfirmasi Eksperimen-mu! Latihan Soal & Makerspace kini terbuka.", en: "Your teacher confirmed your Experiment! Practice Questions & Makerspace are now unlocked." },
   "gate.lab.approved.toast": { id: "Guru sudah mengonfirmasi simulasimu - topik ini ditandai selesai!", en: "Your teacher confirmed your simulation - this topic is now marked complete!" },
   "gate.eksperimen.rejected.toast": { id: "Guru meminta kamu memperbaiki/mengulang bagian Eksperimen. Lihat catatan guru di bawah.", en: "Your teacher asked you to redo/fix the Experiment part. See the teacher's note below." },
   "gate.lab.rejected.toast": { id: "Guru meminta kamu memperbaiki simulasi/refleksimu. Lihat catatan guru di bawah.", en: "Your teacher asked you to improve your simulation/reflection. See the teacher's note below." },
   "gate.banner.pending.eksperimen": { id: "Menunggu konfirmasi guru untuk bagian Eksperimen...", en: "Waiting for teacher confirmation on the Experiment part..." },
-  "gate.banner.pending.lab": { id: "Menunggu konfirmasi guru untuk refleksi &amp; simulasi ini...", en: "Waiting for teacher confirmation on this reflection &amp; simulation..." },
-  "gate.banner.approved.eksperimen": { id: "Dikonfirmasi guru - Latihan Soal &amp; Makerspace terbuka.", en: "Confirmed by teacher - Practice Questions &amp; Makerspace are unlocked." },
+  "gate.banner.pending.lab": { id: "Menunggu konfirmasi guru untuk refleksi & simulasi ini...", en: "Waiting for teacher confirmation on this reflection & simulation..." },
+  "gate.banner.approved.eksperimen": { id: "Dikonfirmasi guru - Latihan Soal & Makerspace terbuka.", en: "Confirmed by teacher - Practice Questions & Makerspace are unlocked." },
   "gate.banner.approved.lab": { id: "Dikonfirmasi guru - topik ini selesai.", en: "Confirmed by teacher - this topic is complete." },
   "gate.banner.rejected.eksperimen": { id: "Guru meminta bagian Eksperimen diperbaiki/diulang.", en: "Teacher asked for the Experiment part to be redone/fixed." },
   "gate.banner.rejected.lab": { id: "Guru meminta simulasi/refleksi ini diperbaiki.", en: "Teacher asked for this simulation/reflection to be improved." },
@@ -379,6 +387,7 @@ const I18N_STRINGS = {
   "eksdata.title": { id: "Input Data Pengamatanmu", en: "Enter Your Observation Data" },
   "eksdata.desc": { id: "Isi tabel di bawah dengan data hasil percobaanmu sendiri (bukan contoh di atas), lalu klik \"Simpan Data\" - datamu tersimpan otomatis dan diperiksa AI untuk kemungkinan kesalahan pencatatan.", en: "Fill in the table below with your own experiment data (not the example above), then click \"Save Data\" - your data is saved automatically and checked by AI for possible recording errors." },
   "eksdata.savebtn": { id: "Simpan Data", en: "Save Data" },
+  "eksdata.mean": { id: "rata-rata", en: "average" },
   "eksdata.empty": { id: "Isi minimal satu baris data dulu sebelum menyimpan.", en: "Fill in at least one row of data before saving." },
   "eksdata.saving": { id: "Menyimpan & memeriksa data...", en: "Saving & checking data..." },
   "eksdata.saved": { id: "Data tersimpan.", en: "Data saved." },
@@ -395,12 +404,18 @@ const I18N_STRINGS = {
   "vlab.reading.result": { id: "Pembacaan neraca: {{grams}} g. Nilai ini otomatis masuk ke tabel.", en: "Balance reading: {{grams}} g. This value was placed into the table automatically." },
   "vlab.rowfull": { id: "Baris untuk arus ini sudah terisi 3 data. Pilih nilai arus lain pada menu di atas.", en: "This current's row already has 3 readings. Pick a different current value above." },
   "vlab.hypothesis.label": { id: "2a. Pertanyaan investigasi & prediksi bentuk grafik F-I (dan alasanmu)", en: "2a. Investigation question & prediction of the F-I graph shape (and your reasoning)" },
-  "vlab.hypothesis.placeholder": { id: "misal: saya memprediksi grafik F terhadap I berbentuk garis lurus melalui titik asal, karena F = BIL artinya F sebanding lurus dengan I...", en: "e.g. I predict the graph of F against I is a straight line through the origin, because F = BIL means F is directly proportional to I..." },
+  "vlab.hypothesis.placeholder": { id: "misal: saya memprediksi grafik F terhadap I akan berbentuk garis lurus melalui titik asal (F sebanding I). Prediksi ini memakai teori F = BIL yang sudah dipelajari - nanti bentuk grafik dari data percobaanku SENDIRI yang akan membuktikan benar/tidaknya prediksi ini, bukan rumus ini saja.", en: "e.g. I predict the graph of F against I will be a straight line through the origin (F proportional to I). This prediction uses the F = BIL theory I've learned - later, the shape of the graph from MY OWN experiment data is what will prove this prediction right or wrong, not the formula alone." },
   "vlab.gradient.label": { id: "2c. Gradien grafik F-I hasil perhitunganmu (T·m)", en: "2c. F-I graph gradient from your own calculation (T·m)" },
   "vlab.bvalue.label": { id: "2c. Nilai B hasil perhitunganmu (T) = gradien ÷ L", en: "2c. Your calculated value of B (T) = gradient ÷ L" },
-  "vlab.checkbtn": { id: "Cek dengan Perhitungan Otomatis", en: "Check with Automatic Calculation" },
+  "vlab.checkbtn": { id: "Cek Jawabanku", en: "Check My Answer" },
   "vlab.checkneeddata": { id: "Isi minimal 3 baris data pada tabel dulu sebelum mengecek.", en: "Fill in at least 3 rows of table data before checking." },
-  "vlab.checkresult": { id: "Perhitungan otomatis dari data tabelmu: gradien ≈ {{grad}} T·m, sehingga B ≈ {{b}} T. Bandingkan dengan hasil perhitungan manualmu di atas.", en: "Automatic calculation from your table data: gradient ≈ {{grad}} T·m, so B ≈ {{b}} T. Compare this with your manual calculation above." },
+  "vlab.checkneedvalue": { id: "Isi dulu gradien dan nilai B hasil perhitunganmu (pakai alat bantu di grafik di atas), baru klik Cek.", en: "Fill in your calculated gradient and B value first (use the tool on the graph above), then click Check." },
+  "vlab.checkresult.correct": { id: "Betul! Gradien dan $B$ yang kamu hitung cocok dengan hasil dari grafikmu: gradien ≈ {{grad}} T·m, $B$ ≈ {{b}} T.", en: "Correct! The gradient and $B$ you calculated match your graph's result: gradient ≈ {{grad}} T·m, $B$ ≈ {{b}} T." },
+  "vlab.checkresult.wrong": { id: "Belum tepat. Coba tarik dua titik yang berjauhan pada garis di grafik (alat bantu di atas), baca $I$ dan $F$-nya, lalu hitung ulang gradien $= \\dfrac{F_2-F_1}{I_2-I_1}$. (Nilai sebenarnya dari grafikmu: gradien ≈ {{grad}} T·m, $B$ ≈ {{b}} T.)", en: "Not quite yet. Try dragging two far-apart points on the graph's line (tool above), read off $I$ and $F$, then recompute the gradient $= \\dfrac{F_2-F_1}{I_2-I_1}$. (True value from your graph: gradient ≈ {{grad}} T·m, $B$ ≈ {{b}} T.)" },
+  "vlab.graph.2pt.desc": { id: "Alat bantu: geser kedua titik oranye di sepanjang garis terbaik (pilih yang berjauhan - \"segitiga besar\" - supaya lebih akurat), lalu baca $I$ dan $F$ tiap titik untuk menghitung gradien sendiri.", en: "Tool: drag the two orange points along the line of best fit (pick ones far apart - a \"large triangle\" - for better accuracy), then read off $I$ and $F$ at each point to calculate the gradient yourself." },
+  "vlab.graph.2pt.points": { id: "Titik 1: $I_1$ = {{i1}} A, $F_1$ = {{f1}} N &nbsp;|&nbsp; Titik 2: $I_2$ = {{i2}} A, $F_2$ = {{f2}} N", en: "Point 1: $I_1$ = {{i1}} A, $F_1$ = {{f1}} N &nbsp;|&nbsp; Point 2: $I_2$ = {{i2}} A, $F_2$ = {{f2}} N" },
+  "vlab.graph.2pt.grad": { id: "Gradien dari kedua titik ini = $\\dfrac{F_2-F_1}{I_2-I_1}$ ≈ {{val}} T·m", en: "Gradient from these two points = $\\dfrac{F_2-F_1}{I_2-I_1}$ ≈ {{val}} T·m" },
+  "vlab.graph.needline": { id: "Isi minimal 2 baris data pada tabel dulu supaya garis dan alat bantunya muncul.", en: "Fill in at least 2 rows of table data first so the line and tool appear." },
   "vlab.conclusion.label": { id: "2c. Kesimpulan dan sumber kesalahan", en: "2c. Conclusion and sources of error" },
   "vlab.savebtn": { id: "Simpan Data", en: "Save Data" },
   "vlab.empty": { id: "Isi prediksi (2a) dan minimal satu baris data tabel dulu sebelum menyimpan.", en: "Fill in your prediction (2a) and at least one row of table data before saving." },
