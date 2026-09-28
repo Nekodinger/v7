@@ -423,6 +423,15 @@ body.nav-pinned .topic-nav {
   padding: 9px 12px;
   font-size: 0.88rem;
 }
+.onboarding-step-shot {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
 .onboarding-status { font-size: 0.82rem; margin: 8px 0 0; min-height: 1.2em; color: var(--muted); }
 .onboarding-status.ok { color: var(--good); }
 .onboarding-footnote { margin-top: 4px; font-size: 0.8rem; }

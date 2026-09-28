@@ -54,6 +54,34 @@ window.Chatbot = (function () {
     return (typeof getStudentLevel === "function") ? getStudentLevel(topicId) : "menengah";
   }
 
+  function stripHtml(html) {
+    const div = document.createElement("div");
+    div.innerHTML = html || "";
+    return (div.textContent || div.innerText || "").trim();
+  }
+
+  // Teks soal Latihan Soal topik ini + soal Kuis dari guru yang sedang aktif
+  // (kalau ada) - dikirim ke tutor AI supaya tutor tahu soal MANA yang tidak
+  // boleh langsung dijawab (lihat aturan "SOAL ASESMEN TERLINDUNGI" di system
+  // prompt, apps-script/Code.gs) - siswa tetap boleh berdiskusi/menghitung
+  // untuk soal fisika lain di luar daftar ini.
+  function buildRestrictedQuestions() {
+    const qs = [];
+    const topic = (typeof TOPICS !== "undefined" ? TOPICS : []).find(tp => tp.id === topicId);
+    if (topic && Array.isArray(topic.latihan)) {
+      topic.latihan.forEach(q => {
+        const txt = stripHtml(trContent(q.question));
+        if (txt) qs.push(txt);
+      });
+    }
+    if (typeof activeQuizData !== "undefined" && activeQuizData && Array.isArray(activeQuizData.questions)) {
+      activeQuizData.questions.forEach(q => {
+        if (q && q.question) qs.push(stripHtml(String(q.question)));
+      });
+    }
+    return qs;
+  }
+
   function normalize(text) {
     return (text || "").toLowerCase().normalize("NFKD").replace(/[^\w\s]/g, " ");
   }
@@ -133,6 +161,7 @@ window.Chatbot = (function () {
           // kedalaman & gaya tuntunan (differentiated learning).
           level: currentLevelForTutor(),
           kbContext: buildKbContext(currentKB()),
+          restrictedQuestions: buildRestrictedQuestions(),
           history: history,
           message: message
         })

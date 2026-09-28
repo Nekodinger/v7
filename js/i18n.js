@@ -53,6 +53,8 @@ const I18N_STRINGS = {
   "gate.key.toggle": { id: "Tampilkan/sembunyikan", en: "Show/hide" },
   "gate.key.save": { id: "Simpan & Lanjut", en: "Save & Continue" },
   "gate.key.needkey": { id: "Tempel API key Gemini dulu.", en: "Paste your Gemini API key first." },
+  "gate.step1.li1.imgalt": { id: "Halaman API Keys di Google AI Studio, tombol Create API key di kanan atas", en: "The API Keys page on Google AI Studio, with the Create API key button top-right" },
+  "gate.step1.li2.imgalt": { id: "Dialog Create a new key di Google AI Studio", en: "The Create a new key dialog on Google AI Studio" },
   "gate.step1.footnote": { id: "Free tier Gemini punya batas kuota harian yang wajar untuk satu kelas, cek angka terbaru di <a href=\"https://ai.google.dev/gemini-api/docs/rate-limits\" target=\"_blank\" rel=\"noopener\">ai.google.dev/gemini-api/docs/rate-limits</a>. Jangan masukkan data pribadi ke dalam prompt simulasi.", en: "The Gemini free tier has a reasonable daily quota for one class - check the latest numbers at <a href=\"https://ai.google.dev/gemini-api/docs/rate-limits\" target=\"_blank\" rel=\"noopener\">ai.google.dev/gemini-api/docs/rate-limits</a>. Don't put personal data into simulation prompts." },
 
   "gate.step2.title": { id: "Langkah 2: Kamu siapa?", en: "Step 2: Who are you?" },
@@ -434,6 +436,7 @@ const I18N_STRINGS = {
   "quiz.topic.label": { id: "Topik Kuis", en: "Quiz Topic" },
   "quiz.apikey.label": { id: "API key Gemini (untuk Generate Otomatis)", en: "Gemini API key (for Auto-Generate)" },
   "quiz.apikey.note": { id: "Hanya dipakai untuk membuat soal otomatis lewat AI, tersimpan di browser ini saja. Kosongkan kalau kamu hanya menulis soal manual.", en: "Only used to auto-generate questions via AI, stored in this browser only. Leave blank if you're only writing questions manually." },
+  "quiz.apikey.howto": { id: "Belum punya API key? Buka <a href=\"https://aistudio.google.com/apikey\" target=\"_blank\" rel=\"noopener\">aistudio.google.com/apikey</a>, login dengan akun Google, lalu klik <strong>Create API key</strong> (gratis):", en: "Don't have an API key yet? Open <a href=\"https://aistudio.google.com/apikey\" target=\"_blank\" rel=\"noopener\">aistudio.google.com/apikey</a>, sign in with your Google account, then click <strong>Create API key</strong> (free):" },
   "quiz.generate.count.label": { id: "Jumlah soal (maks 10)", en: "Number of questions (max 10)" },
   "quiz.generate.type.label": { id: "Tipe soal", en: "Question type" },
   "quiz.type.mcq": { id: "Pilihan Ganda (MCQ)", en: "Multiple Choice (MCQ)" },
@@ -563,6 +566,7 @@ function applyStaticI18n(root) {
   root.querySelectorAll("[data-i18n-html]").forEach(el => { el.innerHTML = t(el.getAttribute("data-i18n-html")); });
   root.querySelectorAll("[data-i18n-placeholder]").forEach(el => { el.placeholder = t(el.getAttribute("data-i18n-placeholder")); });
   root.querySelectorAll("[data-i18n-title]").forEach(el => { el.title = t(el.getAttribute("data-i18n-title")); });
+  root.querySelectorAll("[data-i18n-alt]").forEach(el => { el.alt = t(el.getAttribute("data-i18n-alt")); });
   root.querySelectorAll("[data-i18n-aria]").forEach(el => { el.setAttribute("aria-label", t(el.getAttribute("data-i18n-aria"))); });
   document.documentElement.lang = getLang();
   document.querySelectorAll(".lang-switch-btn").forEach(btn => {

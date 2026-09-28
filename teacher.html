@@ -187,7 +187,10 @@
       <details class="advanced-settings">
         <summary data-i18n="quiz.apikey.label">API key Gemini (untuk Generate Otomatis)</summary>
         <p class="muted small" data-i18n="quiz.apikey.note">Hanya dipakai untuk membuat soal otomatis lewat AI, tersimpan di browser ini saja. Kosongkan kalau kamu hanya menulis soal manual.</p>
-        <input type="password" id="quiz-apikey-input" placeholder="AIza...">
+        <p class="muted small" data-i18n-html="quiz.apikey.howto">Belum punya API key? Buka <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>, login dengan akun Google, lalu klik <strong>Create API key</strong> (gratis):</p>
+        <img class="onboarding-step-shot" src="docs/screenshots/apikey-step2-aistudio-keys.jpg" data-i18n-alt="gate.step1.li1.imgalt" alt="Halaman API Keys di Google AI Studio, tombol Create API key di kanan atas">
+        <img class="onboarding-step-shot" src="docs/screenshots/apikey-step3-create-key-dialog.jpg" data-i18n-alt="gate.step1.li2.imgalt" alt="Dialog Create a new key di Google AI Studio">
+        <input type="password" id="quiz-apikey-input" placeholder="AIza..." style="margin-top:10px;">
       </details>
 
       <div class="quiz-toolbar" style="margin-top:14px;">
