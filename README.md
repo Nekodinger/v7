@@ -62,7 +62,22 @@ Fitur AI (Makerspace, Tutor Fisika, dsb.) butuh backend relay ke Gemini API, dip
 
 Setiap pengguna (guru maupun siswa) memasukkan API key Gemini **gratis miliknya sendiri** lewat panel yang muncul di halaman Beranda situs (dipandu langkah demi langkah) - key tersimpan hanya di browser masing-masing, tidak pernah melewati atau disimpan di server. Kalau API key belum diisi, tab Makerspace tetap menawarkan **Mode Demo** untuk mencoba alurnya.
 
+**Langkah-langkah membuat API key (dipandu juga langsung di situs):**
+
+| 1. Panel "Siapkan API key" di halaman Beranda | 2. Halaman API Keys Google AI Studio | 3. Dialog "Create a new key" |
+| --- | --- | --- |
+| ![Langkah 1](docs/screenshots/apikey-step1-situs.jpg) | ![Langkah 2](docs/screenshots/apikey-step2-aistudio-keys.jpg) | ![Langkah 3](docs/screenshots/apikey-step3-create-key-dialog.jpg) |
+| Klik link **Buka aistudio.google.com/apikey** di panel ini. | Login Google, lalu klik **Create API key** di kanan atas. | Beri nama bebas, klik **Create key**, salin key yang muncul (diawali `AIza...`), lalu tempel di situs. |
+
 Untuk troubleshooting setup lebih lanjut (redeploy Apps Script, error CORS, dsb.), lihat komentar di awal `apps-script/Code.gs`.
+
+### Panel Guru
+
+Guru mengakses `teacher.html` di domain yang sama dengan situs utama (misalnya `https://<domainmu>/teacher.html`), lalu login dengan **Kode Kontrol Guru** yang didefinisikan sebagai `TEACHER_CONTROL_CODE` di `apps-script/Code.gs` - kode ini tersimpan di server, tidak pernah terlihat siswa lewat "View Source" situs.
+
+> **Wajib diganti sebelum dipakai kelas sungguhan**: nilai bawaannya di repo ini masih placeholder. Ganti `TEACHER_CONTROL_CODE`, lalu redeploy Apps Script (Deploy -> Manage deployments -> Edit -> New version -> Deploy) supaya perubahan aktif - URL `/exec` tetap sama.
+
+Dari Panel Guru, guru bisa memulai sesi kelas (kode dibagikan ke siswa), memantau roster & progres real-time, menyetujui/menolak permintaan lanjut siswa di Eksperimen dan Makerspace, serta mengelola & menerbitkan Kuis Topik.
 
 ### Menambah topik baru
 
