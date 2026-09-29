@@ -174,10 +174,76 @@
 
   <main id="content-area" class="content-area">
     <div id="welcome-panel" class="welcome-panel">
-      <div class="welcome-intro">
-        <h2 data-i18n="welcome.title">Selamat datang di Physics Sandbox</h2>
-        <p data-i18n-html="welcome.intro">Pilih topik di sebelah kiri untuk mulai belajar. Setiap topik punya empat bagian: <strong>Materi Belajar</strong>, <strong>Eksperimen</strong>, <strong>Latihan Soal</strong>, dan <strong>Makerspace</strong> tempat kamu bisa membuat simulasi fisikamu sendiri dengan bantuan AI.</p>
-        <p class="muted" data-i18n-html="welcome.legend">Topik yang sudah lengkap ditandai <span class="badge badge-ready">Siap</span>, topik lain masih <span class="badge badge-soon">Segera</span> - struktur sudah disiapkan, tinggal diisi kontennya.</p>
+      <div class="welcome-intro hero-banner">
+        <div class="hero-text">
+          <h2 data-i18n="welcome.title">Selamat datang di Physics Sandbox</h2>
+          <p data-i18n-html="welcome.intro">Pilih topik di sebelah kiri untuk mulai belajar. Setiap topik punya empat bagian: <strong>Materi Belajar</strong>, <strong>Eksperimen</strong>, <strong>Latihan Soal</strong>, dan <strong>Makerspace</strong> tempat kamu bisa membuat simulasi fisikamu sendiri dengan bantuan AI.</p>
+          <p class="muted" data-i18n-html="welcome.legend">Topik yang sudah lengkap ditandai <span class="badge badge-ready">Siap</span>, topik lain masih <span class="badge badge-soon">Segera</span> - struktur sudah disiapkan, tinggal diisi kontennya.</p>
+        </div>
+        <div class="hero-illustration" aria-hidden="true">
+          <svg viewBox="0 0 400 320" role="img">
+            <circle cx="304" cy="82" r="112" fill="var(--accent)" opacity="0.10"/>
+            <circle cx="88" cy="234" r="92" fill="var(--a2-color)" opacity="0.09"/>
+            <circle cx="322" cy="252" r="68" fill="var(--accent-2)" opacity="0.11"/>
+
+            <g transform="translate(200 160)">
+              <ellipse rx="98" ry="40" fill="none" stroke="var(--accent)" stroke-width="3"/>
+              <ellipse rx="98" ry="40" fill="none" stroke="var(--accent)" stroke-width="3" transform="rotate(60)"/>
+              <ellipse rx="98" ry="40" fill="none" stroke="var(--accent)" stroke-width="3" transform="rotate(120)"/>
+              <circle r="11" fill="var(--accent-2)"/>
+              <circle cx="98" cy="0" r="6" fill="var(--a2-color)"/>
+              <circle cx="-49" cy="85" r="6" fill="var(--warn)"/>
+            </g>
+
+            <g transform="translate(62 68)">
+              <circle r="30" fill="var(--good-soft)"/>
+              <path d="M-11,-12 v14 a11,11 0 0 0 22,0 v-14" fill="none" stroke="var(--danger)" stroke-width="4" stroke-linecap="round"/>
+              <path d="M-11,-12 v14 a11,11 0 0 0 22,0 v-14" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round" stroke-dasharray="0 22 100"/>
+              <rect x="-15" y="-18" width="8" height="9" rx="1.5" fill="var(--danger)"/>
+              <rect x="7" y="-18" width="8" height="9" rx="1.5" fill="var(--accent)"/>
+            </g>
+
+            <g transform="translate(64 258)">
+              <circle r="30" fill="var(--warn-soft)"/>
+              <polyline points="-14,10 -4,-4 6,4 15,-12" fill="none" stroke="var(--warn)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="15" cy="-12" r="3" fill="var(--warn)"/>
+            </g>
+
+            <g transform="translate(340 58)">
+              <circle r="27" fill="var(--accent-soft)"/>
+              <path d="M0,-13 a11,11 0 1 1 -6.4,20 c-0.9,-0.7 -1.6,-1.7 -1.6,-3 v-2 h16 v2 c0,1.3 -0.7,2.3 -1.6,3 a11,11 0 0 1 -6.4,-20" fill="none" stroke="var(--accent)" stroke-width="2.6"/>
+              <line x1="-4" y1="12" x2="4" y2="12" stroke="var(--accent)" stroke-width="2.6" stroke-linecap="round"/>
+            </g>
+
+            <g transform="translate(336 266)">
+              <circle r="27" fill="rgba(147,51,234,0.10)"/>
+              <text x="0" y="6" text-anchor="middle" font-family="Fira Code, monospace" font-size="15" font-weight="700" fill="var(--a2-color)">F=ma</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <div class="stage-strip">
+        <div class="stage-card stage-materi">
+          <span class="stage-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5.6C4 4.7 4.7 4 5.6 4H12v16H5.6A1.6 1.6 0 0 1 4 18.4V5.6Z"/><path d="M20 5.6c0-.9-.7-1.6-1.6-1.6H12v16h6.4c.9 0 1.6-.7 1.6-1.6V5.6Z"/></svg></span>
+          <strong data-i18n="tab.materi">Materi Belajar</strong>
+          <span class="muted small" data-i18n="stage.materi.desc">Pahami konsep & rumus dulu.</span>
+        </div>
+        <div class="stage-card stage-eksperimen">
+          <span class="stage-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9.5 3h5"/><path d="M10.2 3v6.7L5 18.2A1.9 1.9 0 0 0 6.6 21h10.8a1.9 1.9 0 0 0 1.6-2.8L13.8 9.7V3"/><path d="M7.7 15.2h8.6"/></svg></span>
+          <strong data-i18n="tab.eksperimen">Eksperimen</strong>
+          <span class="muted small" data-i18n="stage.eksperimen.desc">Coba sendiri, catat datamu.</span>
+        </div>
+        <div class="stage-card stage-latihan">
+          <span class="stage-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4.5 6.5h9M4.5 12h6M4.5 17.5h4"/><path d="m14.3 16.4 5.4-5.4-2.4-2.4-5.4 5.4-.7 3.1 3.1-.7Z"/></svg></span>
+          <strong data-i18n="tab.latihan">Latihan Soal</strong>
+          <span class="muted small" data-i18n="stage.latihan.desc">Uji & kuatkan pemahamanmu.</span>
+        </div>
+        <div class="stage-card stage-lab">
+          <span class="stage-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3.2" y="4.8" width="17.6" height="11.6" rx="1.6"/><path d="M8.3 20h7.4M12 16.4V20"/><path d="M10.3 8.3v4.4l3.8-2.2-3.8-2.2Z" fill="currentColor" stroke="none"/></svg></span>
+          <strong data-i18n="tab.lab">Makerspace</strong>
+          <span class="muted small" data-i18n="stage.lab.desc">Buat simulasimu dengan AI.</span>
+        </div>
       </div>
     </div>
 

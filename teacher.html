@@ -61,6 +61,49 @@
 
 <div class="teacher-wrap">
 
+  <div class="welcome-intro hero-banner" id="teacher-hero">
+    <div class="hero-text">
+      <h2 data-i18n="teacher.hero.title">Panel Guru</h2>
+      <p class="muted" data-i18n="teacher.hero.desc">Kendalikan sesi kelas, pantau progres siswa real-time, konfirmasi permintaan lanjut, dan kelola Kuis Topik - semuanya dari satu halaman.</p>
+    </div>
+    <div class="hero-illustration" aria-hidden="true">
+      <svg viewBox="0 0 400 320" role="img">
+        <circle cx="304" cy="82" r="112" fill="var(--accent)" opacity="0.10"/>
+        <circle cx="88" cy="234" r="92" fill="var(--a2-color)" opacity="0.09"/>
+        <circle cx="322" cy="252" r="68" fill="var(--accent-2)" opacity="0.11"/>
+
+        <g transform="translate(140 190)">
+          <rect x="0" y="-30" width="26" height="60" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2.4"/>
+          <rect x="36" y="-55" width="26" height="85" rx="4" fill="var(--accent-soft)" stroke="var(--accent-2)" stroke-width="2.4"/>
+          <rect x="72" y="-75" width="26" height="105" rx="4" fill="var(--accent-soft)" stroke="var(--a2-color)" stroke-width="2.4"/>
+          <rect x="108" y="-45" width="26" height="75" rx="4" fill="var(--accent-soft)" stroke="var(--warn)" stroke-width="2.4"/>
+        </g>
+
+        <g transform="translate(62 68)">
+          <circle r="30" fill="var(--accent-soft)"/>
+          <circle r="14" fill="none" stroke="var(--accent)" stroke-width="2.6"/>
+          <path d="M0,0 V-9 M0,0 L6,4" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round"/>
+        </g>
+
+        <g transform="translate(64 258)">
+          <circle r="30" fill="var(--warn-soft)"/>
+          <path d="M-9,-11 h18 M-9,11 h18 M-9,-11 c0,7 5,7.5 9,11 c4,-3.5 9,-4 9,-11 M-9,11 c0,-7 5,-7.5 9,-11 c4,3.5 9,4 9,11" fill="none" stroke="var(--warn)" stroke-width="2.2" stroke-linejoin="round"/>
+        </g>
+
+        <g transform="translate(340 58)">
+          <circle r="27" fill="rgba(147,51,234,0.12)"/>
+          <path d="M-9,-6 h18 M-9,0 h18 M-9,6 h11" stroke="var(--a2-color)" stroke-width="2.4" stroke-linecap="round"/>
+        </g>
+
+        <g transform="translate(336 266)">
+          <circle r="27" fill="rgba(8,145,178,0.12)"/>
+          <circle cx="0" cy="-4" r="6" fill="none" stroke="var(--accent-2)" stroke-width="2.4"/>
+          <path d="M-10,11 a10,8 0 0 1 20,0" fill="none" stroke="var(--accent-2)" stroke-width="2.4" stroke-linecap="round"/>
+        </g>
+      </svg>
+    </div>
+  </div>
+
   <div class="teacher-card" id="teacher-login-card">
     <h2 data-i18n="teacher.login.title">Masuk Panel Guru</h2>
     <p class="muted small" data-i18n-html="teacher.login.desc">Masukkan Kode Kontrol Guru (diatur di <code>apps-script/Code.gs</code>, <code>TEACHER_CONTROL_CODE</code>).</p>
@@ -84,7 +127,7 @@
 
   <div id="teacher-panel" hidden>
     <div class="teacher-card">
-      <h2 data-i18n="teacher.session.title">Sesi Kelas</h2>
+      <h2 data-i18n="teacher.session.title"><span class="card-icon icon-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span>Sesi Kelas</h2>
       <p class="muted small" data-i18n="teacher.session.desc">Tentukan satu aktivitas yang wajib dikerjakan bareng semua siswa yang gabung. Siswa gabung lewat tombol Pengaturan di situs utama, masukkan kode di bawah.</p>
 
       <div id="teacher-no-session">
@@ -135,7 +178,7 @@
     </div>
 
     <div class="teacher-card">
-      <h2 data-i18n="teacher.gate.title">Konfirmasi Menunggu</h2>
+      <h2 data-i18n="teacher.gate.title"><span class="card-icon icon-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10M7 21h10M7 3c0 5 5 6 5 9s-5 4-5 9M17 3c0 5-5 6-5 9s5 4 5 9"/></svg></span>Konfirmasi Menunggu</h2>
       <p class="muted small" data-i18n="teacher.gate.desc">Siswa yang sudah menjawab benar pertanyaan konfirmasi Eksperimen, atau mengirim refleksi Lab Simulasi, muncul di sini menunggu keputusanmu. Diperbarui otomatis bersamaan dengan Progres Siswa (~8 detik).</p>
       <div style="overflow-x:auto;">
         <table class="roster-table">
@@ -158,7 +201,7 @@
     </div>
 
     <div class="teacher-card">
-      <h2 data-i18n="teacher.progress.title">Progres Siswa (real-time)</h2>
+      <h2 data-i18n="teacher.progress.title"><span class="card-icon icon-teal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="3.4"/><path d="M5.5 20a6.5 6 0 0 1 13 0"/></svg></span>Progres Siswa (real-time)</h2>
       <p class="muted small" data-i18n="teacher.progress.desc">Diperbarui otomatis tiap ~8 detik. ID siswa bersifat anonim (tanpa nama), digenerate otomatis per perangkat.</p>
       <div style="overflow-x:auto;">
         <table class="roster-table">
@@ -174,7 +217,7 @@
     </div>
 
     <div class="teacher-card">
-      <h2 data-i18n="quiz.section.title">Kuis Topik</h2>
+      <h2 data-i18n="quiz.section.title"><span class="card-icon icon-purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>Kuis Topik</h2>
       <p class="muted small" data-i18n="quiz.section.desc">Kelola bank soal per topik (pilihan ganda, jawaban singkat, atau esai), lalu publikasikan ke sesi kelas yang sedang aktif supaya siswa bisa menjawabnya langsung di situs.</p>
 
       <div class="quiz-toolbar">

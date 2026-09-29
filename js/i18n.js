@@ -111,6 +111,10 @@ const I18N_STRINGS = {
   "welcome.legend": { id: "Topik yang sudah lengkap ditandai <span class=\"badge badge-ready\">Siap</span>, topik lain masih <span class=\"badge badge-soon\">Segera</span> - struktur sudah disiapkan, tinggal diisi kontennya.", en: "Completed topics are marked <span class=\"badge badge-ready\">Ready</span>; other topics are still <span class=\"badge badge-soon\">Coming soon</span> - the structure is ready, content is on the way." },
   "badge.ready": { id: "Siap", en: "Ready" },
   "badge.soon": { id: "Segera", en: "Coming soon" },
+  "stage.materi.desc": { id: "Pahami konsep & rumus dulu.", en: "Understand the concept & formulas first." },
+  "stage.eksperimen.desc": { id: "Coba sendiri, catat datamu.", en: "Try it yourself, record your data." },
+  "stage.latihan.desc": { id: "Uji & kuatkan pemahamanmu.", en: "Test & strengthen your understanding." },
+  "stage.lab.desc": { id: "Buat simulasimu dengan AI.", en: "Build your own simulation with AI." },
 
   /* ---------------- Tabs / progress ---------------- */
   "tab.materi": { id: "Materi Belajar", en: "Learning Material" },
@@ -257,6 +261,8 @@ const I18N_STRINGS = {
   "settings.close": { id: "Tutup", en: "Close" },
 
   /* ---------------- Teacher panel (teacher.html) ---------------- */
+  "teacher.hero.title": { id: "Panel Guru", en: "Teacher Panel" },
+  "teacher.hero.desc": { id: "Kendalikan sesi kelas, pantau progres siswa real-time, konfirmasi permintaan lanjut, dan kelola Kuis Topik - semuanya dari satu halaman.", en: "Control class sessions, monitor student progress in real time, confirm advancement requests, and manage the Topic Quiz - all from one page." },
   "teacher.login.title": { id: "Masuk Panel Guru", en: "Teacher Panel Login" },
   "teacher.login.desc": { id: "Masukkan Kode Kontrol Guru (diatur di <code>apps-script/Code.gs</code>, <code>TEACHER_CONTROL_CODE</code>).", en: "Enter the Teacher Control Code (set in <code>apps-script/Code.gs</code>, <code>TEACHER_CONTROL_CODE</code>)." },
   "teacher.backendurl.label": { id: "URL Backend (Apps Script Web App)", en: "Backend URL (Apps Script Web App)" },
